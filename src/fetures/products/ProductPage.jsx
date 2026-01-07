@@ -87,7 +87,7 @@ function ProductPage() {
   const price = product.price || 0;
 
   // Current cart item and quantity
-  const cartItem = cart?.find((item) => item.id === product.id);
+  const cartItem = cart?.find((item) => item.id === product._id);
   const quantity = cartItem ? cartItem.quantity : 0;
 
   // Labels (can be moved into translations.js if you prefer)
@@ -113,7 +113,6 @@ function ProductPage() {
   const cartTotalLabel = language === "ar" ? "إجمالي السلة:" : "Cart Total:";
   const headerBackTitle = language === "ar" ? name : name; // same text; direction handles layout
 
-  // Add item to cart with initial quantity 1 and message
   const handleAddToCart = () => {
     if (!cartItem) {
       addToCart({ ...product, quantity: 1, message });
@@ -145,7 +144,9 @@ function ProductPage() {
         <button onClick={handleBack} className="cursor-pointer">
           <FaArrowLeft className="text-lg text-[#666D7D]" />
         </button>
-        <p className="capitalize font-semibold text-lg">{headerBackTitle}</p>
+        <p className="capitalize font-semibold lg:text-lg ">
+          {headerBackTitle}
+        </p>
         <button
           className="cursor-pointer pb-1"
           type="button"
@@ -165,7 +166,7 @@ function ProductPage() {
             <img
               src={product.image}
               alt={name}
-              className="object-cover rounded-xl shadow-lg bg-white max-w-full"
+              className="object-cover rounded-xl shadow-lg bg-white lg:max-w-full w-[350px]"
               style={{ objectFit: "cover" }}
             />
           ) : (

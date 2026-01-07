@@ -9,7 +9,7 @@ import translations from "../../utils/translations";
 
 function OrderMode() {
   const navigate = useNavigate();
-  const { setOrderType, setShippingAddress, areas, order, cityKeys } =
+  const { order, setOrderType, setShippingAddress, areas, cityKeys } =
     useOrder();
   const { language, changeLanguage } = useLanguage();
   const t = translations[language];
@@ -19,63 +19,57 @@ function OrderMode() {
     changeLanguage(language === "en" ? "ar" : "en");
   };
 
-  const [mode, setMode] = useState("delivery");
+  const [mode, setMode] = useState(order.orderType || "delivery");
   const [openCity, setOpenCity] = useState(null);
   const [search, setSearch] = useState("");
 
-  // selected from order
-  const selectedCityKey = order?.shippingAddress?.cityKey || "";
-  const selectedAreaName = order?.shippingAddress?.areaName || "";
+  const selectedCity = order.shippingAddress.city || "";
+  const selectedArea = order.shippingAddress.area || "";
 
   const handleBack = () => navigate(-1);
 
   const handleSelectLocation = (cityKey, areaName) => {
-    const locationKey = `${cityKey}:${areaName}`; // stable
+    // Save both order type and shipping address in context
     setOrderType(mode);
     setShippingAddress({
-      cityKey,
-      areaName,
-      locationKey,
-      // keep old string if you still use it elsewhere
+      city: cityKey, // backend-safe field
+      area: areaName,
+      locationKey: `${cityKey}:${areaName}`,
       location: `${t.governorates?.[cityKey] || cityKey} - ${areaName}`,
     });
+
     navigate(-1);
   };
 
   const searchQuery = search.toLowerCase();
 
-  // governorates + areas with labels from translations
-  const visibleCities = (cityKeys || []).flatMap((cityKey) => {
-    const cityLabel = t.governorates?.[cityKey] || cityKey;
+  const visibleCities = (cityKeys || [])
+    .filter((cityKey) => {
+      if (mode === "pickup") return cityKey === "HAWL"; // pickup only HAWL
+      return true; // delivery: all cities
+    })
+    .flatMap((cityKey) => {
+      const cityLabel = t.governorates?.[cityKey] || cityKey;
+      const baseAreas = t.areas?.[cityKey] || areas[cityKey] || [];
 
-    // if translated areas exist, use them; otherwise fall back to context areas
-    const translatedAreas = t.areas?.[cityKey];
-    const baseAreas = translatedAreas || areas[cityKey] || [];
+      if (!searchQuery.trim()) {
+        return [{ cityKey, cityLabel, matchingAreas: baseAreas }];
+      }
 
-    if (!searchQuery.trim()) {
+      const cityMatch = cityLabel.toLowerCase().includes(searchQuery);
+      const filteredAreas = baseAreas.filter((area) =>
+        area.toLowerCase().includes(searchQuery)
+      );
+
+      if (!cityMatch && filteredAreas.length === 0) return [];
       return [
         {
           cityKey,
           cityLabel,
-          matchingAreas: baseAreas,
+          matchingAreas: cityMatch ? baseAreas : filteredAreas,
         },
       ];
-    }
-
-    const cityMatch = cityLabel.toLowerCase().includes(searchQuery);
-    const filteredAreas = baseAreas.filter((area) =>
-      area.toLowerCase().includes(searchQuery)
-    );
-
-    if (!cityMatch && filteredAreas.length === 0) return [];
-    return [
-      {
-        cityKey,
-        cityLabel,
-        matchingAreas: cityMatch ? baseAreas : filteredAreas,
-      },
-    ];
-  });
+    });
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50" dir={dir}>
@@ -85,7 +79,7 @@ function OrderMode() {
           <FaArrowLeft className="text-lg text-[#666D7D]" />
         </button>
         <p className="capitalize font-semibold text-lg">
-          {language === "ar" ? "وضع الطلب" : "order mode"}
+          {language === "ar" ? "وضع الطلب" : "Order Mode"}
         </p>
         <button
           className="flex items-center justify-center cursor-pointer pb-2"
@@ -142,7 +136,7 @@ function OrderMode() {
         </div>
       </div>
 
-      {/* Cities & Areas list */}
+      {/* Cities & Areas */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
         {visibleCities.length === 0 && (
           <div className="text-center text-gray-400 mt-8">
@@ -173,16 +167,15 @@ function OrderMode() {
                 <div className="mt-1 ml-3">
                   {matchingAreas.map((area) => {
                     const isSelected =
-                      selectedCityKey === cityKey && selectedAreaName === area;
+                      selectedCity === cityKey && selectedArea === area;
                     return (
                       <button
                         key={area}
                         onClick={() => handleSelectLocation(cityKey, area)}
-                        className="capitalize w-full text-left bg-white text-sm text-gray-700 border-b border-b-gray-300 hover:bg-gray-100 flex items-center cursor-pointer"
+                        className={`capitalize w-full text-left bg-white text-sm text-gray-700 border-b border-b-gray-300 hover:bg-gray-100 flex items-center cursor-pointer ${
+                          isSelected ? "font-semibold" : ""
+                        }`}
                       >
-                        {isSelected && (
-                          <span className="inline-block w-2.5 h-11 bg-black"></span>
-                        )}
                         <span className="px-4 py-3">{area}</span>
                       </button>
                     );

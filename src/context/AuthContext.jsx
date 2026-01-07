@@ -33,14 +33,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        "https://lilian-backend.onrender.com/api/users/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
       const data = await response.json();
 
@@ -53,6 +50,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const loggedUser = data.data.user;
+
       // 3) Save to state (effects will sync to localStorage)
       setToken(loggedUser.token);
       setUser(loggedUser);

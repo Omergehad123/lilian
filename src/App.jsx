@@ -13,6 +13,9 @@ import TimePage from "./fetures/order/TimePage";
 import ProductPage from "./fetures/products/ProductPage";
 import Orders from "./pages/Orders/Orders";
 import OrderDetails from "./pages/Orders/OrderDetails";
+import PaymentSuccess from "./fetures/payment/PaymentSuccess";
+import PaymentFailed from "./fetures/payment/PaymentFailed";
+import ReviewOrder from "./fetures/order/ReviewOrder";
 
 function App() {
   const location = useLocation();
@@ -25,7 +28,10 @@ function App() {
     location.pathname === "/time" ||
     location.pathname === "/orders" ||
     location.pathname === "/order/:orderId" ||
-    location.pathname === "/products/:slug" ||
+    location.pathname === "/products/:productSlug" ||
+    location.pathname === "/payment-success" ||
+    location.pathname === "/payment-failed" ||
+    location.pathname === "/reviewOrder" ||
     location.pathname === "/search";
 
   return (
@@ -45,6 +51,9 @@ function App() {
           <Route path="/aboutUs" element={<AboutUs />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/order/:orderId" element={<OrderDetails />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/reviewOrder" element={<ReviewOrder />} />
         </Routes>
       </main>
       {!hideHeaderFooter && <Footer />}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Swipper from "./Swipper";
 import { Link } from "react-router-dom";
 import { IoMdInformationCircleOutline } from "react-icons/io";
@@ -9,23 +9,43 @@ import { useLanguage } from "../../hooks/useLanguage";
 import translations from "../../utils/translations";
 
 function HeroSection() {
-  const [t, setT] = useState({});
   const { order, setOrderType } = useOrder();
   const { language } = useLanguage();
-
-  // Safe translation getter
-  const getTranslation = (key, fallback = key) => {
-    return t[key] || translations[language]?.[key] || fallback;
-  };
-
-  useEffect(() => {
-    setT(translations[language] || {});
-  }, [language]);
+  const t = translations[language] || {};
 
   const dir = language === "ar" ? "rtl" : "ltr";
 
   const handleSelectType = (type) => {
     setOrderType(type);
+  };
+
+  const getLocationDisplay = () => {
+    return (
+      order?.shippingAddress?.locationKey ||
+      order?.shippingAddress?.location ||
+      t.chooseLocation ||
+      (language === "ar" ? "اختر الموقع" : "Choose location")
+    );
+  };
+
+  const getScheduleDisplay = () => {
+    if (!order?.scheduledSlot) {
+      return t.chooseTime || (language === "ar" ? "اختر الوقت" : "Choose time");
+    }
+
+    // ✅ تحقق من وجود date و startTime قبل الوصول ليهم
+    if (!order.scheduledSlot.date || !order.scheduledSlot.startTime) {
+      return t.chooseTime || (language === "ar" ? "اختر الوقت" : "Choose time");
+    }
+
+    return (
+      <>
+        {order.scheduledSlot.date.split("-").reverse().join("/")}
+        <span className="ml-1">
+          {order.scheduledSlot.startTime}-{order.scheduledSlot.endTime}
+        </span>
+      </>
+    );
   };
 
   return (
@@ -37,16 +57,16 @@ function HeroSection() {
       <div className="flex lg:hidden items-center justify-between px-10 py-5 bg-white hover:bg-[#eee] border-b border-b-[#d2d2d2]">
         <div className="flex items-center gap-4">
           <img
-            src="./lilyan-logo.jpg"
+            src="https://res.cloudinary.com/dbfty465x/image/upload/v1767728347/lilyan-logo_n7koge.jpg"
             alt="Logo"
             className="w-[80px] object-contain"
           />
           <div className="text-start">
             <h1 className="font-bold capitalize text-xl">
-              {getTranslation("heroTitle", "Lilian De Larose")}
+              {t.heroTitle || "Lilian De Larose"}
             </h1>
             <p className="text-[#777] text-sm mt-1">
-              {getTranslation("heroSubtitle", "Your slogan here")}
+              {t.heroSubtitle || "Your slogan here"}
             </p>
           </div>
         </div>
@@ -67,7 +87,7 @@ function HeroSection() {
                 : "border-b-0 text-gray-500 font-normal"
             }`}
         >
-          {getTranslation("delivery", "Delivery")}
+          {t.delivery || "Delivery"}
         </button>
         <button
           onClick={() => handleSelectType("pickup")}
@@ -78,7 +98,7 @@ function HeroSection() {
                 : "border-b-0 text-gray-500 font-normal"
             }`}
         >
-          {getTranslation("pickup", "Pickup")}
+          {t.pickup || "Pickup"}
         </button>
       </div>
 
@@ -88,14 +108,12 @@ function HeroSection() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col items-start">
             <span className="capitalize text-[#777] text-md">
-              {getTranslation("deliverTo", "Deliver to")}
+              {t.deliverTo || "Deliver to"}
             </span>
             <div className="flex items-center gap-3">
               <FaMotorcycle className="text-[#777] text-xl" />
               <span className="capitalize text-black font-semibold text-md">
-                {order?.shippingAddress?.locationKey ||
-                  order?.shippingAddress?.location ||
-                  getTranslation("edit", "Choose location")}
+                {getLocationDisplay()}
               </span>
             </div>
           </div>
@@ -105,31 +123,22 @@ function HeroSection() {
               to="/orderMode"
               className="capitalize text-blue-600 font-semibold hover:text-blue-800 transition-colors"
             >
-              {getTranslation("edit", "Edit")}
+              {t.edit || "Edit"}
             </Link>
           </div>
         </div>
 
-        {/* Earliest arrival - Match 'Deliver to' styling */}
+        {/* Earliest arrival - المنطق مُصحح */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col items-start">
             <span className="capitalize text-[#777] text-md">
-              {getTranslation("earliestArrival", "Earliest arrival")}
+              {t.earliestArrival || "Earliest arrival"}
             </span>
             <div className="flex items-center gap-3">
               <FiClock className="text-[#777] text-xl" />
-              {order?.pickupDate && order?.pickupStartTime ? (
-                <span className="capitalize text-black font-semibold text-md">
-                  {order.pickupDate.split("-").reverse().join("/")}
-                  <span className="ml-1">
-                    {order.pickupStartTime}-{order.pickupEndTime}
-                  </span>
-                </span>
-              ) : (
-                <span className="capitalize text-black font-semibold text-md">
-                  {getTranslation("edit", "Choose time")}
-                </span>
-              )}
+              <span className="capitalize text-black font-semibold text-md">
+                {getScheduleDisplay()}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -137,7 +146,7 @@ function HeroSection() {
               to="/time"
               className="capitalize text-blue-600 font-semibold hover:text-blue-800 transition-colors"
             >
-              {getTranslation("edit", "Edit")}
+              {t.edit || "Edit"}
             </Link>
           </div>
         </div>

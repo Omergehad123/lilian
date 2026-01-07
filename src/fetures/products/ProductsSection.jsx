@@ -15,10 +15,11 @@ function ProductsSection() {
   const [t, setT] = useState({});
 
   const { addToCart } = useCart();
-  const { products } = useProducts();
+  // MODIFIED: Get isLoading state from useProducts
+  const { products, isLoading } = useProducts();
   const { filters } = useFilter();
 
-  const { language, changeLanguage } = useLanguage();
+  const { language } = useLanguage();
 
   // Safe translation system ✅
   const getTranslation = (key, fallback = key) => {
@@ -148,6 +149,23 @@ function ProductsSection() {
     [addToCart, productMessages]
   );
 
+  // LOADER implementation
+  if (isLoading) {
+    return (
+      <div
+        className="w-full flex flex-col items-center justify-center min-h-[50vh] px-2"
+        dir={dir}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-14 h-14 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-blue-700 text-lg">
+            {getTranslation("loadingProducts", "Loading products...")}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col items-center px-2" dir={dir}>
       {/* Filter Status */}
@@ -201,7 +219,7 @@ function ProductsSection() {
                   }}
                 >
                   <img
-                    src="./lilyan-logo.jpg"
+                    src="https://res.cloudinary.com/dbfty465x/image/upload/v1767728347/lilyan-logo_n7koge.jpg"
                     alt={label}
                     style={{
                       width: 50,
@@ -253,9 +271,14 @@ function ProductsSection() {
 
               {/* Products list */}
               <div
-                className={`transition-all duration-300 flex items-center justify-between flex-wrap ${
-                  isOpen ? "min-h-[150px] py-4" : "max-h-0 p-0"
-                } overflow-hidden`}
+                className={`transition-all duration-300 
+                  grid gap-10
+                  ${isOpen ? "min-h-[150px] py-4" : "max-h-0 p-0"}
+                  overflow-hidden
+                  grid-cols-2
+                  sm:grid-cols-2
+                  md:grid-cols-2
+                `}
               >
                 {productsForCat.map((product) => {
                   const productId = product._id || product.id || product.slug;
@@ -264,7 +287,7 @@ function ProductsSection() {
                   return (
                     <div
                       key={productId}
-                      className="py-2 w-[350px] px-5 h-[500px] flex flex-col"
+                      className="w-full max-w-xs sm:max-w-[250px] h-auto mx-auto px-2 flex flex-col"
                     >
                       <Link to={`/products/${product.slug}`}>
                         <img
@@ -276,11 +299,11 @@ function ProductsSection() {
                               : "./products/product1.jpg"
                           }
                           alt={displayLang(product.name)}
-                          className="w-[250px] mx-auto h-[250px] object-cover rounded-lg"
+                          className="w-full min-w-0 max-w-xs sm:max-w-[250px] mx-auto h-[200px] sm:h-[250px] object-cover rounded-lg"
                         />
                       </Link>
 
-                      <div className="flex flex-col gap-2 mt-5 flex-1 justify-between">
+                      <div className="flex flex-col mt-5 flex-1 justify-between gap-3">
                         <div>
                           <h1 className="font-semibold text-sm leading-tight">
                             {displayLang(product.name)}
@@ -314,7 +337,7 @@ function ProductsSection() {
                         </div>
 
                         {/* Message Input */}
-                        <div className="mt-3">
+                        <div>
                           <input
                             type="text"
                             placeholder={
@@ -337,19 +360,13 @@ function ProductsSection() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center justify-center gap-3 mt-auto">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center sm:gap-3 ">
                           <button
                             onClick={() => handleAddToCart(product)}
-                            className="rounded-md w-[150px] py-2 border border-gray-300 font-bold text-xs capitalize text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex-1 shadow-sm hover:shadow-md"
+                            className="rounded-md w-full sm:w-[150px] py-2 border border-gray-300 font-bold text-xs capitalize text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex-1 shadow-sm hover:shadow-md"
                           >
                             {getTranslation("addToCartLabel", "Add to cart")}
                           </button>
-                          <Link
-                            to={`/products/${product.slug}`}
-                            className="rounded-md w-[150px] py-2 bg-green-600 hover:bg-green-500 text-white font-bold text-xs capitalize text-center transition-all duration-300 flex-1 shadow-md hover:shadow-lg flex items-center justify-center"
-                          >
-                            {getTranslation("buyNowLabel", "Buy now")}
-                          </Link>
                         </div>
                       </div>
                     </div>

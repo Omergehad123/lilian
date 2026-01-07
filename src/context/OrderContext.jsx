@@ -1,4 +1,3 @@
-// OrderContext.jsx
 import React, { createContext, useState, useEffect } from "react";
 
 const OrderContext = createContext();
@@ -155,7 +154,6 @@ export function OrderProvider({ children }) {
       "abu flaira",
       "abu hassaniah",
       "al masayel",
-      "al qurain markets",
       "al-adan",
       "al-fnaitees",
       "al-qurain",
@@ -169,23 +167,28 @@ export function OrderProvider({ children }) {
       "wista",
     ],
   };
+
   const [order, setOrder] = useState(() => {
     const savedOrder = localStorage.getItem("order");
     return savedOrder
       ? JSON.parse(savedOrder)
       : {
-          items: [],
+          items: [], // frontend cart items
           orderType: "pickup",
           shippingAddress: {
-            locationKey: "",
-            cityKey: "",
-            areaName: "",
-            street: "",
             city: "",
-            country: "",
+            area: "",
+            street: "",
+            block: "",
+            house: "",
           },
-          scheduledTime: "",
-          message: "",
+          scheduledSlot: {
+            date: new Date().toISOString().split("T")[0], // today
+            timeSlot: "08:00 AM - 01:00 PM",
+          }, // { date: "YYYY-MM-DD", timeSlot: "08:00 AM - 01:00 PM" }
+          message: "", // optional per-item, will map in items
+          customerName: "",
+          customerPhone: "",
         };
   });
 
@@ -193,6 +196,9 @@ export function OrderProvider({ children }) {
     localStorage.setItem("order", JSON.stringify(order));
   }, [order]);
 
+  /* =======================
+     Order setters
+  ======================== */
   const setItems = (items) => setOrder((prev) => ({ ...prev, items }));
   const setOrderType = (type) =>
     setOrder((prev) => ({ ...prev, orderType: type }));
@@ -201,42 +207,73 @@ export function OrderProvider({ children }) {
       ...prev,
       shippingAddress: { ...prev.shippingAddress, ...address },
     }));
-  const setScheduledTime = (time) =>
-    setOrder((prev) => ({ ...prev, scheduledTime: time }));
+  const setScheduledSlot = (slot) =>
+    setOrder((prev) => ({
+      ...prev,
+      scheduledSlot: slot,
+    }));
+  const setCustomerName = (name) =>
+    setOrder((prev) => ({ ...prev, customerName: name }));
+  const setCustomerPhone = (phone) =>
+    setOrder((prev) => ({ ...prev, customerPhone: phone }));
   const setMessage = (msg) => setOrder((prev) => ({ ...prev, message: msg }));
-
   const clearOrder = () =>
     setOrder({
       items: [],
       orderType: "pickup",
-      shippingAddress: {
-        locationKey: "",
-        cityKey: "",
-        areaName: "",
-        street: "",
-        city: "",
-        country: "",
-      },
-      scheduledTime: "",
+      shippingAddress: { city: "", area: "", street: "", block: "", house: "" },
+      scheduledSlot: null,
       message: "",
+      customerName: "",
+      customerPhone: "",
     });
 
-  const orderTotal = order.items.reduce(
-    (total, item) => total + (item.price || 0) * (item.quantity || 1),
+  /* =======================
+     Order totals
+  ======================== */
+  const totalAmount = order.items.reduce(
+    (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
     0
   );
-  const setPickupDate = (date) =>
-    setOrder((prev) => ({ ...prev, pickupDate: date }));
-  const setPickupTimes = (start, end) =>
-    setOrder((prev) => ({
-      ...prev,
-      pickupStartTime: start,
-      pickupEndTime: end,
-    }));
-  const updateOrder = (newOrderData) => {
-    setOrder((prev) => ({ ...prev, ...newOrderData }));
-    localStorage.setItem("order", JSON.stringify({ ...prev, ...newOrderData }));
+
+  /* =======================
+     Prepare payload for backend
+  ======================== */
+  const getOrderPayload = () => {
+    return {
+      products: order.items.map((item) => ({
+        product: item._id, // assumes frontend item has _id from DB
+        quantity: item.quantity,
+        price: item.price,
+        message: item.message || order.message || "",
+      })),
+      totalAmount,
+      orderType: order.orderType,
+      scheduleTime: order.scheduledSlot
+        ? {
+            date: order.scheduledSlot.date,
+            timeSlot: order.scheduledSlot.timeSlot,
+          }
+        : null,
+      shippingAddress: { ...order.shippingAddress },
+      userInfo: {
+        name: order.customerName,
+        phone: order.customerPhone,
+      },
+    };
   };
+
+  /* =======================
+     Payment method
+  ======================== */
+  const [paymentMethod, setPaymentMethod] = useState(() => {
+    const saved = localStorage.getItem("paymentMethod");
+    return saved || "cash";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("paymentMethod", paymentMethod);
+  }, [paymentMethod]);
 
   return (
     <OrderContext.Provider
@@ -245,15 +282,17 @@ export function OrderProvider({ children }) {
         setItems,
         setOrderType,
         setShippingAddress,
-        setScheduledTime,
+        setScheduledSlot,
         setMessage,
+        setCustomerName,
+        setCustomerPhone,
         clearOrder,
-        orderTotal,
+        totalAmount,
+        getOrderPayload,
         areas,
         cityKeys,
-        setPickupDate,
-        setPickupTimes,
-        updateOrder,
+        paymentMethod,
+        setPaymentMethod,
       }}
     >
       {children}

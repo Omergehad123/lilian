@@ -33,15 +33,8 @@ function Swipper() {
         {memoizedImages.map((image, idx) => (
           <SwiperSlide key={idx}>
             <div
-              style={{
-                margin: "auto",
-                width: "50%",
-                height: "80vh",
-                backgroundImage: `url(${image})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
+              className="mx-auto lg:w-1/2 w-[95%] h-[80vh] bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${image})` }}
             />
           </SwiperSlide>
         ))}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import { FaArrowLeft, FaTag } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { BsCartXFill } from "react-icons/bs";
@@ -6,111 +6,36 @@ import { CiCircleRemove } from "react-icons/ci";
 
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../hooks/useLanguage";
-import translations from "../utils/translations";
+import { useCart } from "../hooks/useCart";
 
 function Cart() {
   const navigate = useNavigate();
   const { user } = useAuth();
-
   const { language, changeLanguage } = useLanguage();
-  const [t, setT] = useState({});
-
-  // Safe translation system
-  const getTranslation = useCallback(
-    (key, fallback = key) => {
-      return t[key] || translations[language]?.[key] || fallback;
-    },
-    [language, t]
-  );
-
-  useEffect(() => {
-    setT(translations[language] || {});
-  }, [language]);
+  const { cart, removeFromCart, increaseItemQty, decreaseItemQty, cartTotal } =
+    useCart();
 
   const dir = language === "ar" ? "rtl" : "ltr";
-
-  const [cart, setCart] = useState(() => {
-    try {
-      const storedCart = localStorage.getItem("cart");
-      return storedCart ? JSON.parse(storedCart) : [];
-    } catch {
-      return [];
-    }
-  });
 
   const toggleLanguage = () => {
     changeLanguage(language === "en" ? "ar" : "en");
   };
 
   const handleCheckout = () => {
-    if (!user) {
-      navigate("/register");
-      return;
-    }
+    if (!user) return navigate("/register");
     navigate("/checkout");
   };
 
-  useEffect(() => {
-    const handleStorage = (e) => {
-      if (e.key === "cart") {
-        try {
-          setCart(e.newValue ? JSON.parse(e.newValue) : []);
-        } catch {
-          setCart([]);
-        }
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  const cartTotal = cart.reduce(
-    (total, item) => total + (item.price || 0) * (item.quantity || 1),
-    0
-  );
-
-  const updateCart = (newCart) => {
-    setCart(newCart);
-    localStorage.setItem("cart", JSON.stringify(newCart));
-  };
-
-  const removeFromCart = (itemId) => {
-    const newCart = cart.filter((item) => (item._id || item.id) !== itemId);
-    updateCart(newCart);
-  };
-
-  const decreaseItemQty = (itemId) => {
-    const newCart = cart
-      .map((item) =>
-        (item._id || item.id) === itemId
-          ? { ...item, quantity: (item.quantity || 1) - 1 }
-          : item
-      )
-      .filter((item) => item.quantity > 0);
-    updateCart(newCart);
-  };
-
-  const increaseItemQty = (itemId) => {
-    const newCart = cart.map((item) =>
-      (item._id || item.id) === itemId
-        ? { ...item, quantity: (item.quantity || 1) + 1 }
-        : item
-    );
-    updateCart(newCart);
-  };
-
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = () => navigate(-1);
 
   const displayName = (name) => {
-    if (!name) return getTranslation("productFallback", "Product");
+    if (!name) return language === "ar" ? "منتج" : "Product";
     if (typeof name === "string") return name;
     return (
       name[language] ||
       name.en ||
       name.ar ||
-      getTranslation("productFallback", "Product")
+      (language === "ar" ? "منتج" : "Product")
     );
   };
 
@@ -122,7 +47,7 @@ function Cart() {
           <FaArrowLeft className="text-lg text-[#666D7D]" />
         </button>
         <h1 className="capitalize font-semibold text-lg">
-          {getTranslation("shoppingCart", "Shopping Cart")}
+          {language === "ar" ? "سلة التسوق" : "Shopping Cart"}
         </h1>
         <button
           className="flex items-center justify-center cursor-pointer pb-2"
@@ -139,7 +64,7 @@ function Cart() {
         {/* Promotions */}
         <div className="flex flex-col gap-1 pb-5 pt-10">
           <h1 className="text-gray-600 capitalize px-3 font-semibold">
-            {getTranslation("promotions", "Promotions")}
+            {language === "ar" ? "العروض" : "Promotions"}
           </h1>
           <div className="bg-white py-7 pl-3 pr-20 flex items-center gap-5">
             <FaTag className="text-gray-500" />
@@ -153,10 +78,10 @@ function Cart() {
           </div>
         </div>
 
-        {/* Items */}
+        {/* Cart Items */}
         <div className="flex flex-col gap-1 py-5 min-h-[70vh]">
           <h1 className="text-gray-600 capitalize px-3 font-semibold">
-            {getTranslation("cartItems", "Items")}
+            {language === "ar" ? "المنتجات" : "Items"}
           </h1>
 
           <div className="bg-white py-7 pl-3 relative">
@@ -167,31 +92,26 @@ function Cart() {
                   <h1 className="font-bold text-gray-500 text-lg">
                     {language === "ar"
                       ? "سلة التسوق فارغة"
-                      : getTranslation("cartEmptyTitle", "Your cart is empty")}
+                      : "Your cart is empty"}
                   </h1>
                   <p className="text-gray-500">
                     {language === "ar"
                       ? "أضف بعض المنتجات إلى سلتك."
-                      : getTranslation(
-                          "cartEmptyText",
-                          "Add some items to your cart."
-                        )}
+                      : "Add some items to your cart."}
                   </p>
                   <Link
                     to="/"
                     className="inline-flex items-center gap-2 mt-4 border border-[#eee] px-10 py-1 rounded-md text-gray-300 text-xs font-medium hover:bg-[#f7f7f7] hover:text-gray-500 transition"
                   >
                     <FaArrowLeft />
-                    {language === "ar"
-                      ? "ابدأ التسوق"
-                      : getTranslation("startShopping", "Start Shopping")}
+                    {language === "ar" ? "ابدأ التسوق" : "Start Shopping"}
                   </Link>
                 </div>
               </div>
             ) : (
               <div className="w-[95%] min-h-[70vh] mx-auto">
                 {cart.map((item) => {
-                  const id = item._id || item.id;
+                  const id = item._id;
                   return (
                     <div
                       key={id}
@@ -208,7 +128,7 @@ function Cart() {
                             {displayName(item.name)}
                           </span>
                           <span className="text-gray-500 text-xs uppercase font-semibold">
-                            {item.price},000 kwd
+                            {item.price.toFixed(3)} KWD
                           </span>
                           {item.message && item.message.trim() && (
                             <div className="mt-1">
@@ -248,7 +168,7 @@ function Cart() {
                 })}
 
                 {/* checkout bar */}
-                <div className="rounded-md flex items-center justify-between px-5 py-2 bg-[#d3e2e7] shadow-lg">
+                <div className="rounded-md flex items-center justify-between px-5 py-2 bg-[#d3e2e7] shadow-lg mt-5">
                   <span className="rounded-md w-10 h-10 bg-gray-400 flex items-center justify-center font-bold">
                     {cart.length}
                   </span>
@@ -256,10 +176,10 @@ function Cart() {
                     onClick={handleCheckout}
                     className="capitalize text-gray-700 font-semibold cursor-pointer hover:text-black transition-colors"
                   >
-                    {getTranslation("checkoutBtn", "Go to checkout")}
+                    {language === "ar" ? "الدفع" : "Go to checkout"}
                   </button>
                   <span className="text-gray-700 font-bold">
-                    {cartTotal},000 kwd
+                    {cartTotal.toFixed(3)} KWD
                   </span>
                 </div>
               </div>

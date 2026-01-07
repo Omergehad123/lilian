@@ -15,43 +15,40 @@ function getTodayDateString() {
 
 function TimePage() {
   const navigate = useNavigate();
-  const { order, updateOrder, setScheduledTime } = useOrder();
+  const { order, setScheduledSlot } = useOrder();
   const { language, changeLanguage } = useLanguage();
   const [t, setT] = useState({});
 
   const getTranslation = useCallback(
-    (key, fallback = key) => {
-      return t[key] || translations[language]?.[key] || fallback;
-    },
+    (key, fallback = key) =>
+      t[key] || translations[language]?.[key] || fallback,
     [language, t]
   );
+
   useEffect(() => {
     setT(translations[language] || {});
   }, [language]);
 
   const dir = language === "ar" ? "rtl" : "ltr";
-  const toggleLanguage = () => {
-    changeLanguage(language === "en" ? "ar" : "en");
-  };
-  // Today is min allowed
-  const today = new Date();
-  const [viewMonth, setViewMonth] = useState(
-    order?.pickupDate ? new Date(order.pickupDate).getMonth() : today.getMonth()
-  );
-  const [viewYear, setViewYear] = useState(
-    order?.pickupDate
-      ? new Date(order.pickupDate).getFullYear()
-      : today.getFullYear()
-  );
+  const toggleLanguage = () => changeLanguage(language === "en" ? "ar" : "en");
 
+  const today = new Date();
+
+  // ✅ FIX: Initialize from context properly
+  const initialSlot = order?.scheduledSlot || {};
   const [selectedDate, setSelectedDate] = useState(
-    order?.pickupDate || getTodayDateString()
+    initialSlot.date || getTodayDateString()
   );
   const [selectedStartTime, setSelectedStartTime] = useState(
-    order?.pickupStartTime || ""
+    initialSlot.startTime || ""
   );
   const [selectedEndTime, setSelectedEndTime] = useState(
-    order?.pickupEndTime || ""
+    initialSlot.endTime || ""
+  );
+
+  const [viewMonth, setViewMonth] = useState(new Date(selectedDate).getMonth());
+  const [viewYear, setViewYear] = useState(
+    new Date(selectedDate).getFullYear()
   );
 
   const timeSlots = [
@@ -60,22 +57,16 @@ function TimePage() {
     "06:00 PM - 11:00 PM",
   ];
 
-  function getDaysInMonth(year, month) {
-    return new Date(year, month + 1, 0).getDate();
-  }
-
-  function getFirstDayOfWeek(year, month) {
-    return new Date(year, month, 1).getDay();
-  }
-
-  function getMonthName(year, month) {
-    return new Date(year, month, 1).toLocaleString("default", {
+  const getDaysInMonth = (year, month) =>
+    new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfWeek = (year, month) => new Date(year, month, 1).getDay();
+  const getMonthName = (year, month) =>
+    new Date(year, month, 1).toLocaleString("default", {
       month: "long",
       year: "numeric",
     });
-  }
 
-  function isBeforeToday(year, month, day) {
+  const isBeforeToday = (year, month, day) => {
     const date = new Date(year, month, day, 0, 0, 0, 0);
     return (
       date <
@@ -89,109 +80,96 @@ function TimePage() {
         0
       )
     );
-  }
+  };
 
   const isAtEarliestMonth =
     viewYear === today.getFullYear() && viewMonth === today.getMonth();
 
   const handleDateSelect = (date, disabled) => {
     if (disabled) return;
-
     setSelectedDate(date);
     setSelectedStartTime("");
     setSelectedEndTime("");
-
-    updateOrder({
-      pickupDate: date,
-      pickupStartTime: "",
-      pickupEndTime: "",
-      scheduledTime: "",
-    });
+    // ✅ FIX: Clear slot when date changes
+    setScheduledSlot(null);
   };
 
+  const parseTimeSlot = (slot) => {
+    const [start, end] = slot.split(" - ");
+    return { start, end };
+  };
+
+  // ✅ FIX: Save to context immediately when time is selected
   const handleTimeSelect = (slot) => {
     const { start, end } = parseTimeSlot(slot);
     setSelectedStartTime(start);
     setSelectedEndTime(end);
 
-    updateOrder({
-      pickupDate: selectedDate,
-      pickupStartTime: start,
-      pickupEndTime: end,
-      scheduledTime: `${selectedDate}T${start
-        .replace(" AM", "")
-        .replace(" PM", "")}:00.000Z`,
-    });
+    // ✅ FIXED: Save complete slot to context with date + timeSlot
+    const completeSlot = {
+      date: selectedDate,
+      timeSlot: slot,
+      startTime: start,
+      endTime: end,
+    };
 
-    setScheduledTime(
-      `${selectedDate}T${start.replace(" AM", "").replace(" PM", "")}:00.000Z`
-    );
-  };
-
-  const parseTimeSlot = (slot) => {
-    const parts = slot.split(" - ");
-    return { start: parts[0], end: parts[1] };
+    setScheduledSlot(completeSlot);
   };
 
   const handlePrevMonth = () => {
     if (isAtEarliestMonth) return;
     if (viewMonth === 0) {
-      setViewMonth(11);
       setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
-    }
+      setViewMonth(11);
+    } else setViewMonth(viewMonth - 1);
   };
+
   const handleNextMonth = () => {
-    setViewMonth((prev) => {
-      if (prev === 11) {
-        setViewYear((y) => y + 1);
-        return 0;
-      }
-      return prev + 1;
-    });
+    if (viewMonth === 11) {
+      setViewYear(viewYear + 1);
+      setViewMonth(0);
+    } else setViewMonth(viewMonth + 1);
   };
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstWeekday = getFirstDayOfWeek(viewYear, viewMonth);
 
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
-    const num = i + 1;
+    const dayNum = i + 1;
     const dateString = `${viewYear}-${String(viewMonth + 1).padStart(
       2,
       "0"
-    )}-${String(num).padStart(2, "0")}`;
+    )}-${String(dayNum).padStart(2, "0")}`;
     return {
       date: dateString,
-      num,
+      num: dayNum,
       year: viewYear,
       month: viewMonth,
-      day: num,
+      day: dayNum,
     };
   });
 
-  const isComplete = selectedDate && selectedStartTime && selectedEndTime;
+  // ✅ FIX: Check if complete slot exists
+  const isComplete =
+    selectedDate &&
+    timeSlots.some((slot) => {
+      const { start, end } = parseTimeSlot(slot);
+      return selectedStartTime === start && selectedEndTime === end;
+    });
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = () => navigate(-1);
 
-  // Fix: Ensure navigation happens after order updates are truly applied in state.
+  // ✅ FIX: Final save with complete validation
   const handleSave = () => {
-    if (isComplete) {
-      updateOrder({
-        pickupDate: selectedDate,
-        pickupStartTime: selectedStartTime,
-        pickupEndTime: selectedEndTime,
-        scheduledTime: `${selectedDate}T${selectedStartTime
-          .replace(" AM", "")
-          .replace(" PM", "")}:00.000Z`,
-      });
-      // Use setTimeout to navigate on next tick so updateOrder's state flushes first.
-      setTimeout(() => {
-        navigate("/", { replace: true });
-      }, 0);
-    }
+    const finalSlot = {
+      date: selectedDate,
+      timeSlot: `${selectedStartTime} - ${selectedEndTime}`,
+      startTime: selectedStartTime,
+      endTime: selectedEndTime,
+    };
+
+    setScheduledSlot(finalSlot);
+    navigate("/", { replace: true });
   };
 
   return (
@@ -202,7 +180,7 @@ function TimePage() {
           <FaArrowLeft className="text-lg text-[#666D7D]" />
         </button>
         <h1 className="capitalize font-semibold text-lg">
-          {getTranslation("shoppingCart", "Shopping Cart")}
+          {getTranslation("shoppingCart", "Select Time")}
         </h1>
         <button
           className="flex items-center justify-center cursor-pointer pb-2"
@@ -210,14 +188,13 @@ function TimePage() {
           onClick={toggleLanguage}
         >
           <span className="text-lg text-black">
-            {language === "en" ? "EN" : "ع"}
+            {language === "en" ? "ع" : "EN"}
           </span>
         </button>
       </div>
 
-      {/* Calendar Section */}
+      {/* Calendar */}
       <div className="p-6 mb-6 w-[400px] mx-auto bg-white rounded-xl shadow-sm">
-        {/* Month Header */}
         <div className="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-200">
           <button
             className={`flex items-center justify-center rounded-full w-10 h-10 bg-transparent transition-all duration-300 cursor-pointer ${
@@ -242,7 +219,6 @@ function TimePage() {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          {/* Days of week header */}
           <div className="grid grid-cols-7 w-full mb-2">
             {["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => (
               <span
@@ -254,30 +230,24 @@ function TimePage() {
             ))}
           </div>
 
-          {/* Days numbers in calendar-style grid */}
           <div className="grid grid-cols-7 gap-y-2 w-full">
             {[...Array(firstWeekday)].map((_, idx) => (
               <span key={"empty-" + idx} />
             ))}
             {monthDays.map((day) => {
               const disabled = isBeforeToday(day.year, day.month, day.day);
+              const selected = selectedDate === day.date && !disabled;
               return (
                 <button
                   key={day.date}
                   onClick={() => handleDateSelect(day.date, disabled)}
-                  className={`
-                    p-2 rounded-full border-2 font-semibold transition-all duration-200 flex items-center justify-center w-10 h-10
-                    ${
-                      disabled
-                        ? "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed pointer-events-none"
-                        : "border-gray-200 hover:bg-black hover:text-white cursor-pointer"
-                    }
-                    ${
-                      selectedDate === day.date && !disabled
-                        ? "bg-black text-white border-black shadow-md"
-                        : ""
-                    }
-                  `}
+                  className={`p-2 rounded-full border-2 font-semibold transition-all duration-200 flex items-center justify-center w-10 h-10 ${
+                    disabled
+                      ? "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed pointer-events-none"
+                      : "border-gray-200 hover:bg-black hover:text-white cursor-pointer"
+                  } ${
+                    selected ? "bg-black text-white border-black shadow-md" : ""
+                  }`}
                   disabled={disabled}
                 >
                   <span className="text-lg">{day.num}</span>
@@ -288,47 +258,41 @@ function TimePage() {
         </div>
       </div>
 
-      {/* Time Slots Section */}
-      <div className="p-6 w-[450px] mx-auto mb-5">
-        <div className="flex items-center flex-wrap justify-between gap-5">
-          {timeSlots.map((time, idx) => {
-            const { start, end } = parseTimeSlot(time);
-            const selected =
-              selectedStartTime === start && selectedEndTime === end;
-            return (
-              <button
-                key={idx}
-                onClick={() => handleTimeSelect(time)}
-                className={
-                  `border border-gray-300 py-3 px-8 cursor-pointer transition-colors duration-200 rounded-lg font-semibold text-xs flex items-center justify-center h-14 ` +
-                  (selected
-                    ? "bg-black text-white border-black shadow-md"
-                    : "bg-white text-black hover:bg-black hover:text-white hover:shadow-md")
-                }
-              >
-                {time}
-              </button>
-            );
-          })}
-        </div>
+      {/* Time Slots */}
+      <div className="p-6 w-[450px] mx-auto mb-5 flex flex-wrap justify-between gap-5">
+        {timeSlots.map((slot, idx) => {
+          const { start, end } = parseTimeSlot(slot);
+          const selected =
+            selectedStartTime === start && selectedEndTime === end;
+          return (
+            <button
+              key={idx}
+              onClick={() => handleTimeSelect(slot)}
+              className={`border border-gray-300 py-3 px-8 cursor-pointer transition-colors duration-200 rounded-lg font-semibold text-xs flex items-center justify-center h-14 ${
+                selected
+                  ? "bg-black text-white border-black shadow-md"
+                  : "bg-white text-black hover:bg-black hover:text-white hover:shadow-md"
+              }`}
+            >
+              {slot}
+            </button>
+          );
+        })}
       </div>
 
+      {/* Save */}
       <div className="flex items-center justify-center w-full">
         <button
           onClick={handleSave}
           disabled={!isComplete}
-          className={`
-            flex items-center gap-2 px-8 py-3 rounded-full font-bold text-sm transition-all duration-200 shadow-xl
-            shadow-black/10 hover:shadow-2xl active:scale-95
-            ${
-              isComplete
-                ? "bg-black text-white hover:bg-gray-800"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }
-          `}
+          className={`flex items-center gap-2 px-8 py-3 rounded-full font-bold text-sm transition-all duration-200 shadow-xl shadow-black/10 hover:shadow-2xl active:scale-95 ${
+            isComplete
+              ? "bg-black text-white hover:bg-gray-800"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
         >
           <FaCheck className="text-sm" />
-          <span>Save</span>
+          <span>{getTranslation("save", "Save")}</span>
         </button>
       </div>
     </div>
