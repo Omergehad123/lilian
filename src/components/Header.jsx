@@ -213,7 +213,7 @@ const Header = () => {
               </Link>
 
               <a
-                href="http://localhost:5000/auth/google"
+                href="https://lilian-backend.onrender.com//auth/google"
                 className="flex items-center gap-4 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all hover:shadow-sm"
               >
                 <span className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
@@ -225,7 +225,7 @@ const Header = () => {
               </a>
 
               <a
-                href="http://localhost:5000/auth/apple"
+                href="https://lilian-backend.onrender.com//auth/apple"
                 className="flex items-center gap-4 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all hover:shadow-sm"
               >
                 <span className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
