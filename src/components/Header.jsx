@@ -51,7 +51,7 @@ const Header = () => {
       {/* Logo and Brand */}
       <div className="hidden lg:flex items-center gap-4">
         <img
-          src="./lilyan-logo.jpg"
+          src="https://res.cloudinary.com/dbfty465x/image/upload/v1767728347/lilyan-logo_n7koge.jpg"
           alt="Logo"
           className="w-[100px] object-contain"
         />
@@ -68,7 +68,7 @@ const Header = () => {
       {/* Mobile Logo */}
       <div className="lg:hidden">
         <img
-          src="./lilyan-logo.jpg"
+          src="https://res.cloudinary.com/dbfty465x/image/upload/v1767728347/lilyan-logo_n7koge.jpg"
           alt="Logo"
           className="w-12 h-12 object-contain"
         />
@@ -105,7 +105,7 @@ const Header = () => {
             onClick={toggleLanguage}
           >
             <span className="text-lg text-black">
-              {language === "en" ? "ع" : "EN"}
+              {language === "en" ? "EN" : "ع"}
             </span>
           </button>
         </div>
@@ -135,7 +135,7 @@ const Header = () => {
             onClick={toggleLanguage}
           >
             <span className="text-lg text-black">
-              {language === "en" ? "ع" : "EN"}
+              {language === "en" ? "EN" : "ع"}
             </span>
           </button>
         </div>
@@ -170,7 +170,7 @@ const Header = () => {
             </Link>
 
             <Link
-              to="/my-order"
+              to="/orders"
               className="flex items-center gap-10 text-[#666D7D] text-sm border-b border-[#dddd] pb-3 capitalize font-semibold hover:text-black transition-colors"
               onClick={() => setOpen(false)}
             >
@@ -242,7 +242,7 @@ const Header = () => {
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-[#666D7D] font-semibold capitalize">
                 {language === "ar" ? "مرحبا" : "Hello"}{" "}
-                {user.fullName ||
+                {user.firstName ||
                   user.name ||
                   user.email?.split("@")[0] ||
                   "User"}

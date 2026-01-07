@@ -162,7 +162,7 @@ function ProductsFilter() {
                   onClick={toggleLanguage}
                 >
                   <span className="text-lg text-black">
-                    {language === "en" ? "ع" : "EN"}
+                    {language === "en" ? "EN" : "ع"}
                   </span>
                 </button>
               </div>

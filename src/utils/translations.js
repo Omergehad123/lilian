@@ -1,9 +1,10 @@
 // translations.js
 const translations = {
   en: {
-    // pages
+    // about pages
     about: "about us",
-
+    // orders page
+    orders: "my orders",
     // About Us Page
     aboutTitle: "Lilyan",
     aboutDescription1: '"Where Beauty Blooms"',
@@ -26,7 +27,7 @@ const translations = {
     menuTitle: "Menu",
     Cart: "my cart",
     menuItems: "menu",
-    orders: "my Orders",
+    myOrders: "my Orders",
     regester: "sign in with",
 
     // Cart page
@@ -265,6 +266,8 @@ const translations = {
   ar: {
     // pages
     about: "حولنا",
+    // orders page
+    orders: "طلباتي",
     // About Us Page
     aboutTitle: "ليان",
     aboutDescription1: '"حيث يزهر الجمال"',
@@ -287,7 +290,7 @@ const translations = {
     menuTitle: "القائمة",
     Cart: "عربتي",
     menuItems: "المنتجات",
-    orders: "طلباتي",
+    myOrders: "طلباتي",
     regester: "تسجيل الدخول باستخدام",
 
     // Cart page

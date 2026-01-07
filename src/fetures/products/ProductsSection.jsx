@@ -249,9 +249,6 @@ function ProductsSection() {
               >
                 <h3 className="font-semibold capitalize">{label}</h3>
                 <span>{isOpen ? <IoIosArrowUp /> : <IoIosArrowDown />}</span>
-                <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                  {productsForCat.length}
-                </span>
               </div>
 
               {/* Products list */}
@@ -279,7 +276,7 @@ function ProductsSection() {
                               : "./products/product1.jpg"
                           }
                           alt={displayLang(product.name)}
-                          className="w-[250px] mx-auto h-[250px] object-cover rounded-lg hover:scale-105 transition-transform duration-200"
+                          className="w-[250px] mx-auto h-[250px] object-cover rounded-lg"
                         />
                       </Link>
 

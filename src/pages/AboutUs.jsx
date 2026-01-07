@@ -32,7 +32,7 @@ const AboutUs = () => {
           onClick={toggleLanguage}
         >
           <span className="text-lg text-black">
-            {language === "en" ? "ع" : "EN"}
+            {language === "en" ? "EN" : "ع"}
           </span>
         </button>
       </div>
@@ -41,7 +41,7 @@ const AboutUs = () => {
         {/* Logo */}
         <div className="mx-auto rounded-2xl flex items-center justify-center mb-8">
           <img
-            src="./logo-2.png"
+            src="https://res.cloudinary.com/dbfty465x/image/upload/v1767792745/logo-2_oj8zhp.png"
             alt="Lilyan Logo"
             className="w-[250px] object-contain rounded-xl shadow-lg"
           />
