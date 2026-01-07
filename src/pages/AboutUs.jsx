@@ -1,0 +1,61 @@
+// pages/AboutUs.jsx
+import React from "react";
+import { FaInstagram, FaWhatsapp, FaPhone, FaArrowLeft } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../hooks/useLanguage";
+import translations from "../utils/translations";
+
+const AboutUs = () => {
+  const navigate = useNavigate();
+  const { language, changeLanguage } = useLanguage();
+  const t = translations[language];
+  const dir = language === "ar" ? "rtl" : "ltr";
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+  const toggleLanguage = () => {
+    changeLanguage(language === "en" ? "ar" : "en");
+  };
+
+  return (
+    <div className="min-h-screen px-4" dir={dir}>
+      {/* Header */}
+      <div className="bg-white flex items-center justify-between px-5 py-3 border-b border-b-gray-300">
+        <button onClick={handleBack} className="cursor-pointer">
+          <FaArrowLeft className="text-lg text-[#666D7D]" />
+        </button>
+        <h1 className="capitalize font-semibold text-lg">{t.about}</h1>
+        <button
+          className="flex items-center justify-center cursor-pointer pb-2"
+          type="button"
+          onClick={toggleLanguage}
+        >
+          <span className="text-lg text-black">
+            {language === "en" ? "ع" : "EN"}
+          </span>
+        </button>
+      </div>
+
+      <div className="max-w-4xl mx-auto  mt-10">
+        {/* Logo */}
+        <div className="mx-auto rounded-2xl flex items-center justify-center mb-8">
+          <img
+            src="./logo-2.png"
+            alt="Lilyan Logo"
+            className="w-[250px] object-contain rounded-xl shadow-lg"
+          />
+        </div>
+
+        {/* Subtitle */}
+        <div className="text-md text-gray-700 mb-12 leading-relaxed">
+          <p>{t.aboutDescription1}</p>
+          <p className="mt-4">{t.aboutDescription2}</p>
+          <p className="mt-4">{t.aboutDescription3}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AboutUs;
