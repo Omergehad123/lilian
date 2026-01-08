@@ -17,6 +17,9 @@ const Checkout = () => {
   const buttonBase =
     "w-full px-4 py-2 rounded-xl font-semibold flex items-center justify-center";
 
+  // orderType to determine if pickup or delivery
+  const orderType = order?.orderType || "delivery";
+
   // Shipping & customer info
   const [street, setStreet] = useState(order.shippingAddress?.street || "");
   const [block, setBlock] = useState(order.shippingAddress?.block || "");
@@ -31,7 +34,6 @@ const Checkout = () => {
 
   // Helpers for displaying location and schedule info
   const getLocationDisplay = () => {
-    // Fallback if missing info
     if (!order.shippingAddress) return "Not set";
     const { city, area, street, block, house } = order.shippingAddress;
     let parts = [];
@@ -49,7 +51,6 @@ const Checkout = () => {
     if (!slot || !slot.date || !slot.startTime || !slot.endTime) {
       return "Not set";
     }
-    // Format date (YYYY-MM-DD) as readable
     const dtObj = new Date(slot.date);
     const dateStr = isNaN(dtObj)
       ? slot.date
@@ -62,26 +63,42 @@ const Checkout = () => {
   };
 
   const handleSaveAndNavigateToReview = () => {
-    // Save shipping & customer info in context before navigating
-    setShippingAddress({ street, block, house });
+    // Only save street/block/house for delivery type
+    if (orderType === "pickup") {
+      setShippingAddress({});
+    } else {
+      setShippingAddress({
+        street,
+        block: block === "" ? "" : Number(block),
+        house: house === "" ? "" : Number(house)
+      });
+    }
     setCustomerName(name);
     setCustomerPhone(phone);
 
-    // Navigate to review order page
     navigate("/reviewOrder");
   };
 
-  // Check if all required fields are filled
+  // Form validation: require street/block/house for delivery, but not pickup
   const isFormValid =
-    street.trim() &&
-    block.trim() &&
-    house.trim() &&
+    (orderType === "pickup" ||
+      (street.trim() && block.toString().trim() && house.toString().trim())) &&
     name.trim() &&
     phone.trim();
 
-  const orderType = order?.orderType || "delivery";
   const handleSelectType = () => {
     navigate("/orderMode");
+  };
+
+  // Handlers for numeric only input for block and house
+  const handleBlockChange = (e) => {
+    const value = e.target.value.replace(/[^0-9]/g, "");
+    setBlock(value);
+  };
+
+  const handleHouseChange = (e) => {
+    const value = e.target.value.replace(/[^0-9]/g, "");
+    setHouse(value);
   };
 
   return (
@@ -172,46 +189,75 @@ const Checkout = () => {
         </div>
 
         <form className="space-y-5 mb-8 flex items-center gap-5 justify-center flex-wrap">
-          <div>
-            <input
-              className={inputBase}
-              placeholder="street"
-              value={street}
-              onChange={(e) => setStreet(e.target.value)}
-            />
-          </div>
-          <div>
-            <input
-              className={inputBase}
-              placeholder="block"
-              value={block}
-              onChange={(e) => setBlock(e.target.value)}
-            />
-          </div>
-          <div>
-            <input
-              className={inputBase}
-              placeholder="house"
-              value={house}
-              onChange={(e) => setHouse(e.target.value)}
-            />
-          </div>
-          <div>
-            <input
-              className={inputBase}
-              placeholder="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <input
-              className={inputBase}
-              placeholder="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
+          {orderType !== "pickup" ? (
+            <>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="street"
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
+                />
+              </div>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="block"
+                  value={block}
+                  onChange={handleBlockChange}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+              </div>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="house"
+                  value={house}
+                  onChange={handleHouseChange}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+              </div>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div>
+                <input
+                  className={inputBase}
+                  placeholder="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </>
+          )}
         </form>
 
         <h3 className="text-xl font-semibold text-center mb-6">

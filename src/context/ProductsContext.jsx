@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useCallback } from "react";
 
 const ProductsContext = createContext();
 
@@ -9,7 +9,7 @@ export const ProductsProvider = ({ children }) => {
     "flower stands",
     "arrangements",
     "hand bouquets",
-    "Lilyan Gift’s Box",
+    "Lilyan Gift's Box",
     "Flowers Arrangements",
     "New Collection",
     "flowers & chocolate",
@@ -20,30 +20,60 @@ export const ProductsProvider = ({ children }) => {
     "vases",
     "orchid only",
   ]);
+
   const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch(
-          "https://lilian-backend.onrender.com/api/products"
-        );
-        if (!res.ok) {
-          throw new Error("Failed to fetch products");
-        }
-        const data = await res.json();
+  // ✅ Memoized fetch function
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-        setProducts(data.data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
+    try {
+      console.log("🔄 Fetching products...");
+      const res = await fetch(
+        "https://lilian-backend.onrender.com/api/products"
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Failed to fetch products`);
       }
-    };
 
-    fetchProducts();
+      const data = await res.json();
+      console.log("✅ Products loaded:", data.data?.length || 0);
+
+      setProducts(data.data || []);
+    } catch (error) {
+      console.error("❌ Error fetching products:", error);
+      setError(error.message);
+      setProducts([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  // Initial fetch
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Manual refresh
+  const refreshProducts = useCallback(() => {
+    console.log("🔄 Manual refresh triggered");
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const value = {
+    products,
+    categories,
+    isLoading,
+    error,
+    refreshProducts,
+  };
+
   return (
-    <ProductsContext.Provider value={{ products, categories }}>
+    <ProductsContext.Provider value={value}>
       {children}
     </ProductsContext.Provider>
   );

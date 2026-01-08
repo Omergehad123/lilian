@@ -25,9 +25,12 @@ function Orders() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/orders", {
-          headers: { Authorization: `Bearer ${token}` }, // ✅ Use correct endpoint + token
-        });
+        const res = await axios.get(
+          "https://lilian-backend.onrender.com/api/orders",
+          {
+            headers: { Authorization: `Bearer ${token}` }, // ✅ Use correct endpoint + token
+          }
+        );
         setOrders(res.data.data || []); // ✅ Match your controller response
       } catch (err) {
         console.error("Error fetching orders:", err);

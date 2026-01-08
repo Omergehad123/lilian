@@ -20,7 +20,7 @@ function ReviewOrder() {
   } = useOrder();
   const { cart, clearCart } = useCart();
 
-  const [paymentMethod, setPaymentMethod] = useState("cash"); // cash | fatora
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
 
   const dir = language === "ar" ? "rtl" : "ltr";
@@ -46,7 +46,6 @@ function ReviewOrder() {
   const pickupInfoLabel =
     language === "ar" ? "معلومات الاستلام" : "Pickup Information";
   const subtotalLabel = language === "ar" ? "المجموع" : "Subtotal";
-  const discountLabel = language === "ar" ? "الخصم (10٪)" : "Discount (10%)";
   const totalLabel = language === "ar" ? "الإجمالي" : "Total";
 
   const orderType = order?.orderType || "pickup";
@@ -85,14 +84,12 @@ function ReviewOrder() {
     return Array.isArray(cart) ? cart : [];
   }, [order, cart]);
 
+  // No discount applied
   const subtotal = orderItems.reduce(
     (total, item) => total + (item.price || 0) * (item.quantity || 1),
     0
   );
-
-  const discountRate = 0.1;
-  const discount = subtotal * discountRate;
-  const totalAmount = subtotal - discount;
+  const totalAmount = subtotal;
 
   // ✅ SAFE schedule display helper
   const getScheduleDisplay = () => {
@@ -116,16 +113,16 @@ function ReviewOrder() {
   const house = order.shippingAddress?.house || "";
   const name = order.customerName || "";
   const phone = order.customerPhone || "";
+  const city = order.shippingAddress?.city || "";
+  const area = order.shippingAddress?.area || "";
   const email = user?.email || "customer@lilian.com"; // ✅ Default email لـ MyFatoorah
 
   // ✅ Validation helper
   const isValidOrder = () => {
     return (
-      street &&
-      block &&
-      house &&
-      name &&
-      phone &&
+      (orderType === "pickup"
+        ? name && phone && city && area
+        : street && block && house && name && phone) &&
       order?.scheduledSlot?.date &&
       order?.scheduledSlot?.startTime &&
       order?.scheduledSlot?.endTime &&
@@ -134,7 +131,39 @@ function ReviewOrder() {
     );
   };
 
-  // ✅ CASH PAYMENT - محسن
+  // Helper to build shippingAddress and userInfo based on orderType
+  const buildShippingAndUserInfo = () => {
+    if (orderType === "pickup") {
+      // For pickup, only need city, area, name, phone
+      return {
+        shippingAddress: {
+          city,
+          area,
+        },
+        userInfo: {
+          name,
+          phone,
+        },
+      };
+    } else {
+      // For delivery, send all address info
+      return {
+        shippingAddress: {
+          city: city || "الكويت",
+          area: area || "منطقة افتراضية",
+          street,
+          block: Number(block),
+          house: Number(house),
+        },
+        userInfo: {
+          name,
+          phone,
+        },
+      };
+    }
+  };
+
+  // ✅ CASH PAYMENT - محسن ومعدل حسب المطلوب
   const handleCashPayment = async () => {
     if (!isValidOrder()) {
       alert(
@@ -147,10 +176,14 @@ function ReviewOrder() {
 
     setLoading(true);
     try {
-      // Ensure shipping & customer info is saved
-      setShippingAddress({ street, block, house });
+      // Ensure shipping & customer info is saved for delivery only
+      if (orderType !== "pickup") {
+        setShippingAddress({ street, block, house });
+      }
       setCustomerName(name);
       setCustomerPhone(phone);
+
+      const { shippingAddress, userInfo } = buildShippingAndUserInfo();
 
       const orderData = {
         user: user._id,
@@ -166,19 +199,13 @@ function ReviewOrder() {
           date: order.scheduledSlot.date,
           timeSlot: `${order.scheduledSlot.startTime} - ${order.scheduledSlot.endTime}`,
         },
-        shippingAddress: {
-          city: order.shippingAddress?.city || "الكويت",
-          area: order.shippingAddress?.area || "منطقة افتراضية",
-          street,
-          block: Number(block),
-          house: Number(house),
-        },
-        userInfo: { name, phone },
+        shippingAddress,
+        userInfo,
         paymentMethod: "cash",
       };
 
       const res = await axios.post(
-        "http://localhost:5000/api/orders",
+        "https://lilian-backend.onrender.com/api/orders",
         orderData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -200,7 +227,7 @@ function ReviewOrder() {
     }
   };
 
-  // ✅ MYFATOORAH PAYMENT - محدث ومُصحح
+  // ✅ MYFATOORAH PAYMENT - محدث ومُصحح (no discount applied)
   const handleFatoorahPayment = async () => {
     if (!isValidOrder()) {
       alert(
@@ -226,11 +253,10 @@ function ReviewOrder() {
         customerName: name,
         customerEmail: email,
         userId: user._id.toString(),
-        // ✅ حذف orderData الداخلية - الـ backend مش محتاجها هنا
       };
 
       const res = await axios.post(
-        "http://localhost:5000/api/payment/myfatoorah", // ✅ Route الصحيح
+        "https://lilian-backend.onrender.com/api/payment/myfatoorah",
         paymentData,
         {
           headers: {
@@ -243,7 +269,6 @@ function ReviewOrder() {
       console.log("✅ MyFatoorah Response:", res.data);
 
       if (res.data.isSuccess && res.data.paymentUrl) {
-        // ✅ Redirect لـ MyFatoorah Payment Page
         window.location.href = res.data.paymentUrl;
       } else {
         alert(
@@ -384,10 +409,6 @@ function ReviewOrder() {
               <div className="flex justify-between text-gray-700">
                 <span>{subtotalLabel}</span>
                 <span>{subtotal.toFixed(3)} KWD</span>
-              </div>
-              <div className="flex justify-between text-green-600 font-medium">
-                <span>{discountLabel}</span>
-                <span>-{discount.toFixed(3)} KWD</span>
               </div>
               <div className="flex justify-between pt-4 border-t border-gray-200">
                 <span className="text-xl font-black text-gray-900">

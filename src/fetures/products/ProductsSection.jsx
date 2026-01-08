@@ -15,13 +15,10 @@ function ProductsSection() {
   const [t, setT] = useState({});
 
   const { addToCart } = useCart();
-  // MODIFIED: Get isLoading state from useProducts
   const { products, isLoading } = useProducts();
   const { filters } = useFilter();
-
   const { language } = useLanguage();
 
-  // Safe translation system ✅
   const getTranslation = (key, fallback = key) => {
     return t[key] || translations[language]?.[key] || fallback;
   };
@@ -36,7 +33,6 @@ function ProductsSection() {
   const uiCategories =
     t.categoryList || translations[language]?.categoryList || [];
 
-  // helper: read field according to current language
   const displayLang = useCallback(
     (val) => {
       if (!val) return "";
@@ -46,7 +42,6 @@ function ProductsSection() {
     [language]
   );
 
-  // Filter & Sort products
   const filteredProducts = useMemo(() => {
     let result = Array.isArray(products) ? [...products] : [];
 
@@ -101,7 +96,6 @@ function ProductsSection() {
     return result;
   }, [products, filters, displayLang]);
 
-  // Map filtered products into categories by a stable key
   const productsByCategory = useMemo(() => {
     const map = {};
     filteredProducts.forEach((product) => {
@@ -119,13 +113,11 @@ function ProductsSection() {
     return map;
   }, [filteredProducts]);
 
-  // visible categories: all (except "all") or a single selected key
   const visibleCategories =
     !openCategory || openCategory === "all"
       ? uiCategories.filter((c) => c.key !== "all")
       : uiCategories.filter((c) => c.key === openCategory);
 
-  // Handle message change لمنتج معين
   const handleMessageChange = useCallback((productId, message) => {
     setProductMessages((prev) => ({
       ...prev,
@@ -149,23 +141,81 @@ function ProductsSection() {
     [addToCart, productMessages]
   );
 
-  // LOADER implementation
   if (isLoading) {
     return (
-      <div
-        className="w-full flex flex-col items-center justify-center min-h-[50vh] px-2"
-        dir={dir}
-      >
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-14 h-14 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-blue-700 text-lg">
-            {getTranslation("loadingProducts", "Loading products...")}
+      <div className="w-full flex flex-col items-center px-2" dir={dir}>
+        {/* Categories strip skeleton */}
+        <div className="lg:w-[70%] w-[95%] overflow-hidden mb-10">
+          <div
+            className="flex py-8 flex-nowrap overflow-x-scroll hide-scrollbar"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col items-center mx-2 animate-pulse"
+              >
+                <div className="w-12 h-12 bg-gray-200 rounded-full mb-2"></div>
+                <div className="w-16 h-3 bg-gray-200 rounded"></div>
+              </div>
+            ))}
           </div>
+        </div>
+
+        {/* Products Grid Skeleton - EXACT SAME LAYOUT */}
+        <div className="w-full max-w-3xl my-10 space-y-4">
+          {Array.from({ length: 3 }).map((_, catIndex) => (
+            <div key={catIndex} className="rounded-sm overflow-hidden">
+              {/* Category Header Skeleton */}
+              <div className="flex justify-center items-center gap-2 p-3 bg-[#eee] animate-pulse">
+                <div className="h-5 w-24 bg-gray-200 rounded"></div>
+                <div className="w-5 h-5 bg-gray-200 rounded-full"></div>
+              </div>
+
+              {/* Products Skeleton Grid */}
+              <div className="py-4 grid gap-10 grid-cols-2 sm:grid-cols-2 md:grid-cols-2 animate-pulse">
+                {Array.from({ length: 4 }).map((_, productIndex) => (
+                  <div
+                    key={productIndex}
+                    className="w-full max-w-xs sm:max-w-[250px] h-auto mx-auto px-2 flex flex-col"
+                  >
+                    {/* Product Image Skeleton */}
+                    <div className="w-full h-[200px] sm:h-[250px] bg-gray-200 rounded-lg mx-auto"></div>
+
+                    {/* Product Content Skeleton */}
+                    <div className="flex flex-col mt-5 flex-1 justify-between gap-3">
+                      <div>
+                        {/* Name & Prep Time Skeleton */}
+                        <div className="h-4 w-3/4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 w-1/2 bg-gray-200 rounded mb-3"></div>
+
+                        {/* Price Skeleton */}
+                        <div className="flex gap-2">
+                          <div className="h-3 w-10 bg-gray-200 rounded-sm"></div>
+                          <div className="h-5 w-16 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+
+                      {/* Message Input Skeleton */}
+                      <div>
+                        <div className="h-10 w-full bg-gray-200 rounded-md mb-1"></div>
+                        <div className="h-3 w-12 bg-gray-200 rounded"></div>
+                      </div>
+
+                      {/* Button Skeleton */}
+                      <div className="h-10 w-full bg-gray-200 rounded-md"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
+  // MAIN CONTENT (unchanged)
   return (
     <div className="w-full flex flex-col items-center px-2" dir={dir}>
       {/* Filter Status */}

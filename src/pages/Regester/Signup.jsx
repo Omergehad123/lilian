@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { FaApple } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
 import translations from "../../utils/translations";
 
 function Signup() {
-  const { register } = useAuth();
+  const { register, loading: authLoading } = useAuth();
   const { language } = useLanguage();
   const t = translations[language];
   const dir = language === "ar" ? "rtl" : "ltr";
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     firstName: "",
@@ -21,6 +22,7 @@ function Signup() {
 
   const [inputError, setInputError] = useState({});
   const [serverError, setServerError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,11 +41,19 @@ function Signup() {
     setInputError(errors);
     if (Object.keys(errors).length > 0) return;
 
-    const result = await register(form);
-
-    if (!result.success) {
-      setServerError(result.error);
+    setSubmitting(true);
+    try {
+      const result = await register(form);
+      if (!result.success) {
+        setServerError(result.error);
+      } else {
+        // Registration success, optionally redirect to login or dashboard
+        navigate("/login");
+      }
+    } catch (err) {
+      setServerError("An unexpected error occurred.");
     }
+    setSubmitting(false);
   };
 
   return (
@@ -63,6 +73,7 @@ function Signup() {
             className={`border-b py-3 bg-transparent focus:outline-none ${
               inputError.firstName ? "border-red-500" : "border-gray-300"
             }`}
+            autoComplete="given-name"
           />
 
           <input
@@ -74,6 +85,7 @@ function Signup() {
             className={`border-b py-3 bg-transparent focus:outline-none ${
               inputError.lastName ? "border-red-500" : "border-gray-300"
             }`}
+            autoComplete="family-name"
           />
 
           <input
@@ -85,6 +97,7 @@ function Signup() {
             className={`border-b py-3 bg-transparent focus:outline-none ${
               inputError.email ? "border-red-500" : "border-gray-300"
             }`}
+            autoComplete="email"
           />
 
           <input
@@ -96,6 +109,7 @@ function Signup() {
             className={`border-b py-3 bg-transparent focus:outline-none ${
               inputError.password ? "border-red-500" : "border-gray-300"
             }`}
+            autoComplete="new-password"
           />
         </div>
 
@@ -134,8 +148,9 @@ function Signup() {
         <button
           type="submit"
           className="absolute w-[95%] left-1/2 -translate-x-1/2 -bottom-10 py-3 bg-gray-300 rounded-md hover:bg-gray-400 transition capitalize"
+          disabled={submitting || authLoading}
         >
-          {t.signupButton}
+          {submitting || authLoading ? t.signupLoading || "Signing up..." : t.signupButton}
         </button>
       </form>
     </div>
