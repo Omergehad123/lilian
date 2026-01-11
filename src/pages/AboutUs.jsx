@@ -37,7 +37,7 @@ const AboutUs = () => {
         </button>
       </div>
 
-      <div className="max-w-4xl mx-auto  mt-10">
+      <div className="max-w-4xl mx-auto mt-10">
         {/* Logo */}
         <div className="mx-auto rounded-2xl flex items-center justify-center mb-8">
           <img
@@ -52,6 +52,16 @@ const AboutUs = () => {
           <p>{t.aboutDescription1}</p>
           <p className="mt-4">{t.aboutDescription2}</p>
           <p className="mt-4">{t.aboutDescription3}</p>
+        </div>
+
+        {/* Store Location Text */}
+        <div className="mb-12">
+          <h2 className="font-semibold text-lg mb-4">
+            {language === "ar" ? "موقع المتجر" : "Store Location"}
+          </h2>
+          <div className="p-4 bg-gray-100 rounded-xl border border-gray-200 text-base font-medium text-gray-800" style={{ direction: "rtl" }}>
+            حولى شارع عبداللطيف العثمان المتفرع من شارع بيروت مجمع غنيمة محل رقم 9
+          </div>
         </div>
       </div>
     </div>

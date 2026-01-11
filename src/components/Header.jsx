@@ -1,4 +1,3 @@
-// Header.jsx
 import React, { useState, useEffect } from "react";
 import {
   FaShoppingCart,
@@ -15,13 +14,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "../hooks/useLanguage.js";
 import translations from "../utils/translations.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { useCart } from "../hooks/useCart";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
   const [t, setT] = useState({});
 
   const { language, changeLanguage } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth(); // ✅ Get token
+  const { cart } = useCart();
 
   const getTranslation = (key, fallback = key) => {
     return t[key] || translations[language]?.[key] || fallback;
@@ -36,11 +37,22 @@ const Header = () => {
   };
 
   const navigate = useNavigate();
+
   const handleLogout = () => {
     logout();
     setOpen(false);
     navigate("/");
+    // ✅ Removed toast - no dependency
+    console.log("✅ Logged out successfully"); // Temp feedback
   };
+
+  const handleGoogleLogin = () => {
+    window.location.href =
+      "https://lilian-backend-7bjc.onrender.com/api/auth/google";
+  };
+
+  // 🔥 PROTECTED ROUTES - Only show if logged in
+  const isAuthenticated = user || token;
 
   return (
     <header
@@ -76,7 +88,6 @@ const Header = () => {
 
       {/* Actions: Button + Links */}
       <div className="flex items-center justify-between gap-4 w-full lg:w-fit">
-        {/* Button to open navbar */}
         <button
           onClick={() => setOpen(true)}
           className="flex items-center justify-center cursor-pointer"
@@ -86,11 +97,19 @@ const Header = () => {
           <FaBars className="text-lg text-black" />
         </button>
 
-        {/* Links */}
         <div className="flex items-center gap-5">
           <div className="relative flex items-center justify-center">
             <Link to="/cart" className="relative">
               <FaShoppingCart className="text-lg text-black" />
+              {cart && cart.length > 0 && (
+                <span
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs font-bold flex items-center justify-center min-w-[20px] h-[20px] leading-none border-2 border-white shadow"
+                  style={{ fontSize: "12px" }}
+                  aria-label={`Cart count: ${cart.length}`}
+                >
+                  {cart.length}
+                </span>
+              )}
             </Link>
           </div>
 
@@ -98,7 +117,6 @@ const Header = () => {
             <FaSearch className="text-lg text-black" />
           </Link>
 
-          {/* Global language toggle */}
           <button
             className="flex items-center justify-center cursor-pointer pb-2"
             type="button"
@@ -128,7 +146,6 @@ const Header = () => {
             <FaArrowLeft className="text-lg text-[#666D7D]" />
           </button>
 
-          {/* Same toggle inside sidebar */}
           <button
             className="cursor-pointer"
             type="button"
@@ -154,6 +171,15 @@ const Header = () => {
             >
               <span className="flex items-center justify-center relative">
                 <FaShoppingCart className="text-lg text-[#666D7D]" />
+                {cart && cart.length > 0 && (
+                  <span
+                    className="absolute -top-2 -right-3 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs font-bold flex items-center justify-center min-w-[20px] h-[20px] leading-none border-2 border-white shadow"
+                    style={{ fontSize: "12px" }}
+                    aria-label={`Cart count: ${cart.length}`}
+                  >
+                    {cart.length}
+                  </span>
+                )}
               </span>
               {getTranslation("Cart", "My Cart")}
             </Link>
@@ -169,16 +195,26 @@ const Header = () => {
               {getTranslation("menuItems", "Menu")}
             </Link>
 
-            <Link
-              to="/orders"
-              className="flex items-center gap-10 text-[#666D7D] text-sm border-b border-[#dddd] pb-3 capitalize font-semibold hover:text-black transition-colors"
-              onClick={() => setOpen(false)}
-            >
-              <span className="flex items-center justify-center">
-                <FaClockRotateLeft className="text-lg text-[#666D7D]" />
-              </span>
-              {getTranslation("orders", "My Orders")}
-            </Link>
+            {/* 🔥 ORDERS LINK - Only show if authenticated */}
+            {isAuthenticated ? (
+              <Link
+                to="/orders"
+                className="flex items-center gap-10 text-[#666D7D] text-sm border-b border-[#dddd] pb-3 capitalize font-semibold hover:text-black transition-colors"
+                onClick={() => setOpen(false)}
+              >
+                <span className="flex items-center justify-center">
+                  <FaClockRotateLeft className="text-lg text-[#666D7D]" />
+                </span>
+                {getTranslation("orders", "My Orders")}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-10 text-gray-400 text-sm border-b border-[#dddd] pb-3">
+                <span className="flex items-center justify-center">
+                  <FaClockRotateLeft className="text-lg text-gray-400" />
+                </span>
+                {getTranslation("orders", "My Orders")} (Login required)
+              </div>
+            )}
 
             <Link
               to="/aboutUs"
@@ -194,7 +230,7 @@ const Header = () => {
         </div>
 
         {/* Auth section */}
-        {!user ? (
+        {!isAuthenticated ? (
           <div className="mt-10">
             <span className="capitalize text-lg text-[#666D7D] font-semibold border-b border-[#dddd] pb-3 block mb-4">
               {getTranslation("regester", "Sign in with")}
@@ -212,8 +248,8 @@ const Header = () => {
                 <span className="font-semibold text-gray-800">Email</span>
               </Link>
 
-              <a
-                href="https://lilian-backend.onrender.com//auth/google"
+              <button
+                onClick={handleGoogleLogin}
                 className="flex items-center gap-4 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all hover:shadow-sm"
               >
                 <span className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
@@ -222,36 +258,20 @@ const Header = () => {
                 <span className="font-semibold text-gray-800">
                   {getTranslation("googleLabel", "Google")}
                 </span>
-              </a>
-
-              <a
-                href="https://lilian-backend.onrender.com//auth/apple"
-                className="flex items-center gap-4 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all hover:shadow-sm"
-              >
-                <span className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                  <FaApple className="text-xl text-gray-600" />
-                </span>
-                <span className="font-semibold text-gray-800">
-                  {getTranslation("appleLabel", "Apple")}
-                </span>
-              </a>
+              </button>
             </nav>
           </div>
         ) : (
           <div className="mt-10 border-t border-[#dddd] pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-[#666D7D] font-semibold capitalize">
-                {language === "ar" ? "مرحبا" : "Hello"}{" "}
-                {user.firstName ||
-                  user.name ||
-                  user.email?.split("@")[0] ||
-                  "User"}
-              </span>
-            </div>
+            <span className="text-sm text-[#666D7D] font-semibold capitalize">
+              {language === "ar" ? "مرحبا" : "Hello"}{" "}
+              {user?.firstName && user?.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : user?.email}
+            </span>
             <button
-              type="button"
               onClick={handleLogout}
-              className="w-full py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold uppercase tracking-wide transition-all shadow-md hover:shadow-lg"
+              className="w-full py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold uppercase tracking-wide transition-all shadow-md hover:shadow-lg mt-3"
             >
               {language === "ar" ? "تسجيل الخروج" : "Logout"}
             </button>

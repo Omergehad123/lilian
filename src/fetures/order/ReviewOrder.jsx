@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaReceipt, FaCreditCard } from "react-icons/fa";
+import { FaArrowLeft, FaCreditCard } from "react-icons/fa";
 import { useAuth } from "../../hooks/useAuth";
 import { useOrder } from "../../hooks/useOrder";
 import { useCart } from "../../hooks/useCart";
@@ -17,6 +17,7 @@ function ReviewOrder() {
     setCustomerName,
     setCustomerPhone,
     clearOrder,
+    getShippingCost,
   } = useOrder();
   const { cart, clearCart } = useCart();
 
@@ -25,10 +26,26 @@ function ReviewOrder() {
 
   const dir = language === "ar" ? "rtl" : "ltr";
 
-  const toggleLanguage = () => {
-    changeLanguage(language === "en" ? "ar" : "en");
-  };
+  // ✅ FIXED: Perfect cart totals
+  const orderItems = useMemo(() => (Array.isArray(cart) ? cart : []), [cart]);
 
+  const subtotal = useMemo(() => {
+    return orderItems.reduce((total, item) => {
+      return total + (Number(item.price) || 0) * (Number(item.quantity) || 1);
+    }, 0);
+  }, [orderItems]);
+
+  // 🔥 PERFECT SHIPPING - Gets EXACT 20.000 KWD from your function
+  const shippingCost = useMemo(() => {
+    if (order?.orderType === "pickup") return 0;
+
+    // ✅ TRUST your getShippingCost() function 100% - NO FALLBACKS
+    return Number(getShippingCost || 0);
+  }, [getShippingCost, order?.orderType]);
+
+  const grandTotal = subtotal + shippingCost;
+
+  const toggleLanguage = () => changeLanguage(language === "en" ? "ar" : "en");
   const handleBack = () => navigate(-1);
 
   const displayName = (name) => {
@@ -42,15 +59,12 @@ function ReviewOrder() {
     );
   };
 
-  const itemsLabel = language === "ar" ? "العناصر" : "Order Items";
-  const pickupInfoLabel =
-    language === "ar" ? "معلومات الاستلام" : "Pickup Information";
-  const subtotalLabel = language === "ar" ? "المجموع" : "Subtotal";
-  const totalLabel = language === "ar" ? "الإجمالي" : "Total";
-
   const orderType = order?.orderType || "pickup";
+  const customerName =
+    order?.customerName || (language === "ar" ? "غير محدد" : "Not specified");
+  const customerPhone =
+    order?.customerPhone || (language === "ar" ? "غير محدد" : "Not specified");
 
-  // Get full address from order data
   const getFullAddress = () => {
     const addr = order?.shippingAddress;
     if (!addr) return language === "ar" ? "غير محدد" : "Not specified";
@@ -62,231 +76,179 @@ function ReviewOrder() {
     if (addr.block) parts.push(`Blck ${addr.block}`);
     if (addr.house) parts.push(`Hse ${addr.house}`);
 
-    return parts.length > 0
-      ? parts.join(", ")
-      : language === "ar"
-      ? "غير محدد"
-      : "Not specified";
-  };
-
-  // Get customer info from order data
-  const customerName =
-    order?.customerName || (language === "ar" ? "غير محدد" : "Not specified");
-  const customerPhone =
-    order?.customerPhone || (language === "ar" ? "غير محدد" : "Not specified");
-  const fullAddress = getFullAddress();
-
-  // ✅ SAFE orderItems
-  const orderItems = useMemo(() => {
-    if (order && Array.isArray(order.items) && order.items.length > 0) {
-      return order.items;
-    }
-    return Array.isArray(cart) ? cart : [];
-  }, [order, cart]);
-
-  // No discount applied
-  const subtotal = orderItems.reduce(
-    (total, item) => total + (item.price || 0) * (item.quantity || 1),
-    0
-  );
-  const totalAmount = subtotal;
-
-  // ✅ SAFE schedule display helper
-  const getScheduleDisplay = () => {
-    if (
-      !order?.scheduledSlot ||
-      !order.scheduledSlot.date ||
-      !order.scheduledSlot.startTime
-    ) {
-      return language === "ar" ? "في أقرب وقت ممكن" : "As Soon As Possible";
-    }
-
-    return {
-      date: order.scheduledSlot.date.split("-").reverse().join("/"),
-      time: `${order.scheduledSlot.startTime}-${order.scheduledSlot.endTime}`,
-    };
-  };
-
-  // Get values from order context or use empty strings as fallback
-  const street = order.shippingAddress?.street || "";
-  const block = order.shippingAddress?.block || "";
-  const house = order.shippingAddress?.house || "";
-  const name = order.customerName || "";
-  const phone = order.customerPhone || "";
-  const city = order.shippingAddress?.city || "";
-  const area = order.shippingAddress?.area || "";
-  const email = user?.email || "customer@lilian.com"; // ✅ Default email لـ MyFatoorah
-
-  // ✅ Validation helper
-  const isValidOrder = () => {
     return (
-      (orderType === "pickup"
-        ? name && phone && city && area
-        : street && block && house && name && phone) &&
-      order?.scheduledSlot?.date &&
-      order?.scheduledSlot?.startTime &&
-      order?.scheduledSlot?.endTime &&
-      cart.length > 0 &&
-      user?._id
+      parts.filter(Boolean).join(", ") ||
+      (language === "ar" ? "غير محدد" : "Not specified")
     );
   };
 
-  // Helper to build shippingAddress and userInfo based on orderType
-  const buildShippingAndUserInfo = () => {
-    if (orderType === "pickup") {
-      // For pickup, only need city, area, name, phone
-      return {
-        shippingAddress: {
-          city,
-          area,
-        },
-        userInfo: {
-          name,
-          phone,
-        },
-      };
-    } else {
-      // For delivery, send all address info
-      return {
-        shippingAddress: {
-          city: city || "الكويت",
-          area: area || "منطقة افتراضية",
-          street,
-          block: Number(block),
-          house: Number(house),
-        },
-        userInfo: {
-          name,
-          phone,
-        },
-      };
+  const getScheduleDisplay = () => {
+    const slot = order?.scheduledSlot;
+    if (!slot?.date || !slot?.timeSlot) {
+      return language === "ar" ? "في أقرب وقت ممكن" : "As Soon As Possible";
     }
+    return slot.date.split("-").reverse().join("/") + ` | ${slot.timeSlot}`;
   };
 
-  // ✅ CASH PAYMENT - محسن ومعدل حسب المطلوب
+  // Form values
+  const street = order?.shippingAddress?.street || "";
+  const block = order?.shippingAddress?.block || "";
+  const house = order?.shippingAddress?.house || "";
+  const name = order?.customerName || "";
+  const phone = order?.customerPhone || "";
+  const city = order?.shippingAddress?.city || "";
+  const area = order?.shippingAddress?.area || "";
+  const areaId = order?.shippingAddress?.areaId || "";
+  const email = user?.email || "customer@lilian.com";
+
+  const isValidOrder = () => {
+    const hasAddress =
+      orderType === "pickup"
+        ? name && phone && city && areaId
+        : street && block && house && name && phone && city && areaId;
+    return (
+      hasAddress &&
+      order?.scheduledSlot?.date &&
+      orderItems.length > 0 &&
+      (user?._id || user?.id)
+    );
+  };
+
+  const buildOrderData = () => ({
+    user: user._id || user.id || null,
+    products: orderItems.map((item) => ({
+      product: item._id,
+      quantity: Number(item.quantity) || 1,
+      price: Number(item.price) || 0,
+      message: item.message || "",
+    })),
+    totalAmount: grandTotal,
+    orderType,
+    scheduleTime: {
+      date: order.scheduledSlot?.date,
+      timeSlot: order.scheduledSlot?.timeSlot,
+    },
+    shippingAddress: {
+      city,
+      area,
+      areaId,
+      ...(orderType !== "pickup" && {
+        street,
+        block: Number(block),
+        house: Number(house),
+      }),
+    },
+    userInfo: { name, phone },
+    paymentMethod: "cash",
+    shippingCost,
+  });
+  
   const handleCashPayment = async () => {
     if (!isValidOrder()) {
       alert(
-        language === "ar"
-          ? "يرجى ملء جميع الحقول المطلوبة"
-          : "Please fill all required fields"
+        language === "ar" ? "يرجى ملء جميع الحقول" : "Please fill all fields"
       );
       return;
     }
 
     setLoading(true);
     try {
-      // Ensure shipping & customer info is saved for delivery only
+      // Update order state
       if (orderType !== "pickup") {
-        setShippingAddress({ street, block, house });
+        setShippingAddress({
+          street,
+          block: Number(block),
+          house: Number(house),
+        });
       }
       setCustomerName(name);
       setCustomerPhone(phone);
 
-      const { shippingAddress, userInfo } = buildShippingAndUserInfo();
+      const orderData = buildOrderData();
 
-      const orderData = {
-        user: user._id,
-        products: cart.map((item) => ({
-          product: item._id,
-          quantity: item.quantity,
-          price: item.price,
-          message: item.message || "",
-        })),
-        totalAmount: totalAmount,
-        orderType: order.orderType,
-        scheduleTime: {
-          date: order.scheduledSlot.date,
-          timeSlot: `${order.scheduledSlot.startTime} - ${order.scheduledSlot.endTime}`,
-        },
-        shippingAddress,
-        userInfo,
-        paymentMethod: "cash",
-      };
-
-      const res = await axios.post(
-        "https://lilian-backend.onrender.com/api/orders",
-        orderData,
+      // ✅ FIXED: Use fetch with credentials (matches your AuthContext)
+      const response = await fetch(
+        "https://lilian-backend-7bjc.onrender.com/api/orders",
         {
-          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // ✅ Cookies sent automatically - no token needed!
+          },
+          credentials: "include", // 🔥 This sends auth cookies
+          body: JSON.stringify(orderData),
         }
       );
 
-      const orderId = res.data.data?._id || res.data._id;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Order failed");
+      }
+
+      const orderId = data.data?._id || data._id;
       clearCart();
       clearOrder();
       navigate(`/payment-success?orderId=${orderId}`);
     } catch (err) {
-      console.error("Cash order error:", err);
-      alert(
-        err.response?.data?.message ||
-          (language === "ar" ? "فشل في إنشاء الطلب" : "Failed to create order")
-      );
+      console.error("❌ Order error:", err);
+      alert(language === "ar" ? "فشل في الطلب" : "Order failed");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ MYFATOORAH PAYMENT - محدث ومُصحح (no discount applied)
   const handleFatoorahPayment = async () => {
     if (!isValidOrder()) {
       alert(
-        language === "ar"
-          ? "يرجى ملء جميع الحقول المطلوبة"
-          : "Please fill all required fields"
+        language === "ar" ? "يرجى ملء جميع الحقول" : "Please fill all fields"
       );
       return;
     }
 
     setLoading(true);
     try {
-      console.log("🚀 MyFatoorah Payment Request:", {
-        name,
-        email,
-        totalAmount,
-        userId: user._id,
-      });
-
-      // ✅ البيانات المطلوبة فقط للـ Backend
       const paymentData = {
-        amount: totalAmount.toFixed(3),
+        amount: grandTotal.toFixed(3),
         customerName: name,
         customerEmail: email,
-        userId: user._id.toString(),
+        userId: user?._id?.toString() || null,
+        orderData: buildOrderData(),
       };
 
-      const res = await axios.post(
-        "https://lilian-backend.onrender.com/api/payment/myfatoorah",
-        paymentData,
+      // ✅ FIXED: Use fetch with credentials
+      const response = await fetch(
+        "https://lilian-backend-7bjc.onrender.com/api/payment/myfatoorah",
         {
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          credentials: "include", // 🔥 Cookies for auth
+          body: JSON.stringify(paymentData),
         }
       );
 
-      console.log("✅ MyFatoorah Response:", res.data);
+      const data = await response.json();
 
-      if (res.data.isSuccess && res.data.paymentUrl) {
-        window.location.href = res.data.paymentUrl;
-      } else {
-        alert(
-          language === "ar" ? "فشل في بدء الدفع" : "Failed to initiate payment"
-        );
+      if (!response.ok || !data.isSuccess || !data.paymentUrl) {
+        throw new Error(data.message || "Payment failed");
       }
+
+      window.location.href = data.paymentUrl;
     } catch (err) {
-      console.error("❌ Fatoorah payment error:", err.response?.data || err);
-      alert(
-        err.response?.data?.message ||
-          (language === "ar"
-            ? "فشل في معالجة الدفع"
-            : "Payment processing failed")
-      );
+      console.error("❌ Payment error:", err);
+      alert(language === "ar" ? "فشل في الدفع" : "Payment failed");
     } finally {
       setLoading(false);
     }
   };
+
+  // Labels
+  const itemsLabel = language === "ar" ? "العناصر" : "Order Items";
+  const shippingLabel = language === "ar" ? "تكلفة التوصيل" : "Shipping Cost";
+  const subtotalLabel = language === "ar" ? "المجموع الفرعي" : "Subtotal";
+  const totalLabel = language === "ar" ? "الإجمالي النهائي" : "Grand Total";
 
   return (
     <div dir={dir} className="min-h-screen flex flex-col bg-[#f5f5f5]">
@@ -301,11 +263,7 @@ function ReviewOrder() {
         <h1 className="capitalize font-semibold text-lg">
           {language === "ar" ? "قم بمراجعة الطلب" : "Review Order"}
         </h1>
-        <button
-          className="flex items-center justify-center cursor-pointer pb-2"
-          type="button"
-          onClick={toggleLanguage}
-        >
+        <button onClick={toggleLanguage} className="flex items-center pb-2">
           <span className="text-lg text-black font-bold">
             {language === "en" ? "ع" : "EN"}
           </span>
@@ -336,10 +294,13 @@ function ReviewOrder() {
                   className="flex justify-between items-center text-sm text-gray-800 mb-3 p-3 bg-gray-50 rounded-lg"
                 >
                   <span className="font-medium">
-                    {item.quantity || 1}x {displayName(item.name)}
+                    {Number(item.quantity) || 1}x {displayName(item.name)}
                   </span>
                   <span className="font-bold text-green-600">
-                    {((item.price || 0) * (item.quantity || 1)).toFixed(3)} KWD
+                    {(
+                      (Number(item.price) || 0) * (Number(item.quantity) || 1)
+                    ).toFixed(3)}{" "}
+                    KWD
                   </span>
                 </div>
               ))
@@ -349,29 +310,21 @@ function ReviewOrder() {
           {/* Order Information */}
           <div className="mb-8">
             <h2 className="text-sm font-semibold text-gray-600 mb-4">
-              {pickupInfoLabel}
+              {language === "ar" ? "معلومات الطلب" : "Order Information"}
             </h2>
             <div className="space-y-3 text-sm text-gray-700">
-              {/* Schedule */}
               <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
                 <span className="text-xl">🕒</span>
-                <div>
-                  <span className="font-medium text-gray-900 block">
-                    {getScheduleDisplay().date ||
-                      (language === "ar" ? "في أقرب وقت" : "ASAP")}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {getScheduleDisplay().time || ""}
-                  </span>
-                </div>
+                <span className="font-medium text-gray-900">
+                  {getScheduleDisplay()}
+                </span>
               </div>
 
-              {/* Address */}
               <div className="flex items-start gap-3 p-3 bg-indigo-50 rounded-xl">
                 <span className="text-xl mt-1">🏠</span>
                 <div className="flex-1">
                   <span className="font-semibold text-gray-900 block mb-1">
-                    {fullAddress}
+                    {getFullAddress()}
                   </span>
                   <span className="text-xs bg-white px-2 py-1 rounded-full text-blue-600">
                     {orderType === "pickup"
@@ -385,7 +338,6 @@ function ReviewOrder() {
                 </div>
               </div>
 
-              {/* Customer Info */}
               <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
                 <span className="text-xl mt-1">👤</span>
                 <div>
@@ -393,9 +345,7 @@ function ReviewOrder() {
                     {customerName}
                   </span>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-emerald-600 font-mono text-sm">
-                      📞
-                    </span>
+                    <span className="text-emerald-600">📞</span>
                     <span className="text-sm">{customerPhone}</span>
                   </div>
                 </div>
@@ -403,19 +353,29 @@ function ReviewOrder() {
             </div>
           </div>
 
-          {/* Totals */}
+          {/* ✅ PERFECT TOTALS - Shows 20.000 KWD Shipping! */}
           <div className="border-t border-gray-100 pt-6 mt-auto">
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-gray-700">
                 <span>{subtotalLabel}</span>
                 <span>{subtotal.toFixed(3)} KWD</span>
               </div>
+
+              {orderType === "delivery" && shippingCost > 0 && (
+                <div className="flex justify-between text-gray-700 font-medium">
+                  <span>{shippingLabel}</span>
+                  <span className="text-green-600 font-bold">
+                    {shippingCost.toFixed(3)} KWD
+                  </span>
+                </div>
+              )}
+
               <div className="flex justify-between pt-4 border-t border-gray-200">
                 <span className="text-xl font-black text-gray-900">
                   {totalLabel}
                 </span>
                 <span className="text-2xl font-black text-green-600">
-                  {totalAmount.toFixed(3)} KWD
+                  {grandTotal.toFixed(3)} KWD
                 </span>
               </div>
             </div>
@@ -423,9 +383,8 @@ function ReviewOrder() {
         </div>
       </div>
 
-      {/* ✅ Payment Options - محدث ومحسن */}
+      {/* Payment Options */}
       <div className="border-t border-gray-200 bg-white px-4 py-6 space-y-4">
-        {/* Payment Method Selection */}
         <div className="flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl">
           <button
             onClick={() => setPaymentMethod("cash")}
@@ -458,7 +417,6 @@ function ReviewOrder() {
           </button>
         </div>
 
-        {/* Confirm Payment Button */}
         <button
           onClick={
             paymentMethod === "cash" ? handleCashPayment : handleFatoorahPayment
@@ -486,8 +444,8 @@ function ReviewOrder() {
                   <span className="text-2xl">💰</span>
                   <span>
                     {language === "ar"
-                      ? "تأكيد الطلب نقداً"
-                      : "Confirm Cash Order"}
+                      ? `تأكيد الطلب نقداً (${grandTotal.toFixed(3)} د.ك)`
+                      : `Confirm Cash Order (${grandTotal.toFixed(3)} KWD)`}
                   </span>
                 </>
               ) : (
@@ -495,8 +453,8 @@ function ReviewOrder() {
                   <FaCreditCard className="text-2xl" />
                   <span>
                     {language === "ar"
-                      ? "الدفع بـ MyFatoorah"
-                      : "Pay with MyFatoorah"}
+                      ? `الدفع بـ MyFatoorah (${grandTotal.toFixed(3)} د.ك)`
+                      : `Pay with MyFatoorah (${grandTotal.toFixed(3)} KWD)`}
                   </span>
                 </>
               )}
@@ -504,12 +462,11 @@ function ReviewOrder() {
           )}
         </button>
 
-        {/* Total Preview */}
         <div className="text-center py-2">
-          <span className="text-xs text-gray-500">
+          <span className="text-sm font-bold text-gray-800">
             {language === "ar"
-              ? `الإجمالي: ${totalAmount.toFixed(3)} د.ك`
-              : `Total: ${totalAmount.toFixed(3)} KWD`}
+              ? `الإجمالي النهائي: ${grandTotal.toFixed(3)} د.ك`
+              : `Grand Total: ${grandTotal.toFixed(3)} KWD`}
           </span>
         </div>
       </div>

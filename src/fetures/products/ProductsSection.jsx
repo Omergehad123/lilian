@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { useProducts } from "../../hooks/useProducts";
 import { useCart } from "../../hooks/useCart";
@@ -8,9 +8,16 @@ import { useFilter } from "../../hooks/useFilter";
 import { useLanguage } from "../../hooks/useLanguage";
 import translations from "../../utils/translations";
 
+// Import the toast notification component from 'react-toastify'
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 function ProductsSection() {
   const [openCategory, setOpenCategory] = useState(null);
-  const [openAccordion, setOpenAccordion] = useState(null);
+
+  // New: Use an object to track which accordions are open (by category key)
+  const [openAccordions, setOpenAccordions] = useState({});
+  
   const [productMessages, setProductMessages] = useState({});
   const [t, setT] = useState({});
 
@@ -18,6 +25,8 @@ function ProductsSection() {
   const { products, isLoading } = useProducts();
   const { filters } = useFilter();
   const { language } = useLanguage();
+
+  const navigate = useNavigate();
 
   const getTranslation = (key, fallback = key) => {
     return t[key] || translations[language]?.[key] || fallback;
@@ -125,6 +134,7 @@ function ProductsSection() {
     }));
   }, []);
 
+  // Updated: Show a toast when item is added to cart
   const handleAddToCart = useCallback(
     (product) => {
       const productId = product._id || product.id || product.slug;
@@ -137,9 +147,77 @@ function ProductsSection() {
         quantity: 1,
         message: currentMessage,
       });
+
+      // Show react-toastify notification here
+      toast.success(
+        `${displayLang(product.name)} ${getTranslation("addedToCart", "added to cart!")}`,
+        {
+          position: language === "ar" ? "top-left" : "top-right",
+          autoClose: 2200,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: false,
+          progress: undefined,
+          rtl: language === "ar",
+        }
+      );
     },
-    [addToCart, productMessages]
+    [addToCart, productMessages, displayLang, getTranslation, language]
   );
+
+  // "Buy Now" handler: adds to cart and navigates to /cart
+  const handleBuyNow = useCallback(
+    (product) => {
+      const productId = product._id || product.id || product.slug;
+      const currentMessage = productMessages[productId] || "";
+
+      addToCart({
+        ...product,
+        id: productId,
+        price: product.actualPrice,
+        quantity: 1,
+        message: currentMessage,
+      });
+
+      // Optional: Show a notification for buy now (you can remove if unneeded)
+      toast.success(
+        `${displayLang(product.name)} ${getTranslation("addedToCart", "added to cart!")} ${getTranslation("goToCart", "Redirecting to cart...")}`,
+        {
+          position: language === "ar" ? "top-left" : "top-right",
+          autoClose: 1200,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: false,
+          progress: undefined,
+          rtl: language === "ar",
+        }
+      );
+
+      setTimeout(() => {
+        navigate("/cart");
+      }, 1200); // Wait for toast or can be 0 to be instant
+    },
+    [addToCart, productMessages, displayLang, getTranslation, language, navigate]
+  );
+
+  // --- open all accordions if "all" is selected ---
+  useEffect(() => {
+    // Only open all visible categories if openCategory is "all"
+    if (openCategory === "all" || openCategory === null) {
+      // Open all visible categories
+      const newOpenAccordions = {};
+      visibleCategories.forEach(({ key }) => {
+        newOpenAccordions[key] = true;
+      });
+      setOpenAccordions(newOpenAccordions);
+    } else {
+      // Only open the selected
+      setOpenAccordions({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCategory, uiCategories]);
 
   if (isLoading) {
     return (
@@ -215,9 +293,12 @@ function ProductsSection() {
     );
   }
 
-  // MAIN CONTENT (unchanged)
+  // MAIN CONTENT (unchanged except for ToastContainer)
   return (
     <div className="w-full flex flex-col items-center px-2" dir={dir}>
+      {/* Toast Notification Container */}
+      <ToastContainer />
+
       {/* Filter Status */}
       {Object.values(filters || {}).some(
         (f) => f !== "" && f?.type !== "" && f !== 150
@@ -299,7 +380,11 @@ function ProductsSection() {
       {/* Products Grid */}
       <div className="w-full max-w-3xl my-10 space-y-4">
         {visibleCategories.map(({ key, label }) => {
-          const isOpen = openAccordion === key;
+          // If openCategory is all/null => all categories open
+          const isOpen = (openCategory === "all" || openCategory === null)
+            ? !!openAccordions[key]
+            : !!openAccordions[key];
+
           const productsForCat =
             key === "all" ? filteredProducts : productsByCategory[key] || [];
 
@@ -313,7 +398,13 @@ function ProductsSection() {
               {/* Accordion header */}
               <div
                 className="flex justify-center items-center gap-2 p-3 cursor-pointer bg-[#eee] hover:bg-gray-100 transition-colors"
-                onClick={() => setOpenAccordion(isOpen ? null : key)}
+                onClick={() => {
+                  setOpenAccordions(prev => {
+                    // Toggle current accordion
+                    const next = { ...prev, [key]: !prev[key] };
+                    return next;
+                  });
+                }}
               >
                 <h3 className="font-semibold capitalize">{label}</h3>
                 <span>{isOpen ? <IoIosArrowUp /> : <IoIosArrowDown />}</span>
@@ -417,6 +508,12 @@ function ProductsSection() {
                           >
                             {getTranslation("addToCartLabel", "Add to cart")}
                           </button>
+                          <button
+                            onClick={() => handleBuyNow(product)}
+                            className="rounded-md w-full sm:w-[150px] py-2 border border-green-400 font-bold text-xs capitalize text-green-600 hover:bg-green-50 hover:border-green-500 transition-all duration-200 flex-1 shadow-sm hover:shadow-md"
+                          >
+                            {getTranslation("buyNowLabel", "Buy Now")}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -436,7 +533,7 @@ function ProductsSection() {
             <button
               onClick={() => {
                 setOpenCategory(null);
-                setOpenAccordion(null);
+                setOpenAccordions({});
               }}
               className="px-6 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
             >

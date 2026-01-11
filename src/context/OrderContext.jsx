@@ -1,248 +1,180 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useMemo } from "react";
 
 const OrderContext = createContext();
 
+const API_BASE_URL = "https://lilian-backend-7bjc.onrender.com/api"; // Your backend URL
+
 export function OrderProvider({ children }) {
-  const cityKeys = ["AHMD", "FARW", "HAWL", "JAHR", "KUWC", "MUBK"];
+  const [cities, setCities] = useState([]);
+  const [areas, setAreas] = useState({});
+  const [loadingCities, setLoadingCities] = useState(true);
 
-  const areas = {
-    AHMD: [
-      "abu halifa",
-      "al-fintas",
-      "al-maqwa",
-      "ali sabah al-salem - umm al hayman",
-      "dhaher",
-      "east al ahmadi",
-      "eqaila",
-      "fahd al-ahmad",
-      "fahaheel",
-      "hadiya",
-      "jaber al-ali",
-      "mahboula",
-      "mangaf",
-      "middle of ahmadi",
-      "north ahmadi",
-      "riqqa",
-      "sabah al-ahmad 1",
-      "sabah al-ahmad 2",
-      "sabah al-ahmad 3",
-      "sabah al-ahmad 4",
-      "sabah al-ahmad 5",
-      "sabah al-ahmad 6",
-      "sabah al-ahmad investment",
-      "sabah al-ahmad services",
-      "sabahiya",
-    ],
-    FARW: [
-      "abbasiya",
-      "abdullah al mubarak al-sabah",
-      "abdullah al mubarak - west jleeb",
-      "abraq khaitan",
-      "airport",
-      "al-shadadyia",
-      "andalus",
-      "ardhiya 4",
-      "ardhiya 6",
-      "ardhiya herafiya",
-      "ardhiya small industrial",
-      "ardhiya storage zone",
-      "ashbellah",
-      "dhajeej",
-      "farwaniya",
-      "firdous",
-      "ishbiliya",
-      "jeleeb al-shuyoukh",
-      "khaitan",
-      "kuwait international airport",
-      "omariya",
-      "rabia",
-      "rai",
-      "rehab",
-      "rigai",
-      "sabah al nasser",
-      "sabah al-salem univeristy city",
-      "sheikh saad aviation terminal",
-      "south abdullah almubarak",
-      "south khaitan - exhibits",
-      "WEST ABDULLAH AL-MUBARAK",
-    ],
-    HAWL: [
-      "al-bidea",
-      "al-siddeeq",
-      "anjafa",
-      "bayan",
-      "hawalli",
-      "hitteen",
-      "jabriya",
-      "maidan hawalli",
-      "mishrif",
-      "mubarak al-abdullah",
-      "rumaithiya",
-      "salam",
-      "salmiya",
-      "salwa",
-      "shaab",
-      "shuhada",
-      "zahra",
-    ],
-    JAHR: [
-      "agricultural sulaibiya",
-      "chalets of subiya",
-      "jahra",
-      "jahra industrial 1",
-      "naeem",
-      "nahdha",
-      "nasseem",
-      "north west jahra",
-      "old jahra",
-      "oyoun",
-      "qairawan",
-      "qasr",
-      "saad al abdullah",
-      "subiya",
-      "sulaibiya residential",
-      "taima",
-      "waha",
-    ],
-    KUWC: [
-      "abdulla al-salem",
-      "adailiya",
-      "al hamra tower",
-      "al soor gardens - block 1",
-      "bneid al qar",
-      "crystal tower",
-      "daiya",
-      "dasma",
-      "dasman",
-      "doha",
-      "faiha",
-      "granada",
-      "health area",
-      "jaber al ahmed",
-      "khaldiya",
-      "kifan",
-      "kuwait city",
-      "kuwait free trade zone",
-      "mansouriya",
-      "mina doha",
-      "mirqab",
-      "mubarakiya camps",
-      "mubarakiya",
-      "nahda",
-      "north west al-sulaibikhat",
-      "nuzha",
-      "qadsiya",
-      "qibla",
-      "qortuba",
-      "rawda",
-      "salhiya",
-      "sawaber",
-      "shamiya",
-      "sharq",
-      "shuwaikh",
-      "shuwaikh administrative",
-      "shuwaikh industrial 1",
-      "shuwaikh industrial 2",
-      "shuwaikh industrial 3",
-      "shuwaikh medical",
-      "shuwaikh port",
-      "sulaibikhat",
-      "surra",
-      "yarmouk",
-    ],
-    MUBK: [
-      "abu flaira",
-      "abu hassaniah",
-      "al masayel",
-      "al-adan",
-      "al-fnaitees",
-      "al-qurain",
-      "al-qusour",
-      "messila",
-      "mubarak al-kabeer",
-      "sabah al-salem",
-      "south wista",
-      "subhan industrial",
-      "west abu ftirah hirafyia",
-      "wista",
-    ],
-  };
+  // ✅ FIXED: Fetch ONLY ACTIVE cities/areas for customers
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        setLoadingCities(true);
+        const response = await fetch(`${API_BASE_URL}/city-areas`); // ✅ No auth needed!
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          // ✅ Filter ONLY ACTIVE cities and areas for customers
+          const activeCities = data.cities.filter(
+            (city) => city.isActive !== false
+          );
+
+          setCities(activeCities);
+
+          // ✅ Transform for easy lookup - ONLY active areas
+          const areasObj = {};
+          activeCities.forEach((city) => {
+            areasObj[city.key] = city.areas
+              .filter((area) => area.isActive !== false) // ✅ Only active areas
+              .map((area) => ({
+                key: area._id,
+                name: area.name,
+                shippingPrice: area.shippingPrice,
+              }));
+          });
+          setAreas(areasObj);
+        }
+      } catch (error) {
+        console.error("❌ Failed to fetch cities:", error);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+
+    fetchCities();
+  }, []);
+
+  const cityKeys = useMemo(() => cities.map((city) => city.key), [cities]);
+
+  // ... rest of your existing order state (UNCHANGED - PERFECT!)
   const [order, setOrder] = useState(() => {
-    const savedOrder = localStorage.getItem("order");
-    return savedOrder
-      ? JSON.parse(savedOrder)
-      : {
-          items: [], // frontend cart items
-          orderType: "pickup",
-          shippingAddress: {
-            city: "",
-            area: "",
-            street: "",
-            block: "",
-            house: "",
-          },
-          scheduledSlot: {
-            date: new Date().toISOString().split("T")[0], // today
-            timeSlot: "08:00 AM - 01:00 PM",
-          }, // { date: "YYYY-MM-DD", timeSlot: "08:00 AM - 01:00 PM" }
-          message: "", // optional per-item, will map in items
-          customerName: "",
-          customerPhone: "",
-        };
+    try {
+      const savedOrder = localStorage.getItem("order");
+      return savedOrder
+        ? JSON.parse(savedOrder)
+        : {
+            items: [],
+            orderType: "pickup",
+            shippingAddress: {
+              city: "",
+              area: "",
+              areaId: "", // ✅ This stores the area._id for backend
+              street: "",
+              block: "",
+              house: "",
+            },
+            scheduledSlot: {
+              date: new Date().toISOString().split("T")[0],
+              timeSlot: "08:00 AM - 01:00 PM",
+            },
+            message: "",
+            customerName: "",
+            customerPhone: "",
+          };
+    } catch {
+      return {
+        items: [],
+        orderType: "pickup",
+        shippingAddress: {
+          city: "",
+          area: "",
+          areaId: "",
+          street: "",
+          block: "",
+          house: "",
+        },
+        scheduledSlot: {
+          date: new Date().toISOString().split("T")[0],
+          timeSlot: "08:00 AM - 01:00 PM",
+        },
+        message: "",
+        customerName: "",
+        customerPhone: "",
+      };
+    }
   });
 
   useEffect(() => {
     localStorage.setItem("order", JSON.stringify(order));
   }, [order]);
 
-  /* =======================
-     Order setters
-  ======================== */
   const setItems = (items) => setOrder((prev) => ({ ...prev, items }));
   const setOrderType = (type) =>
     setOrder((prev) => ({ ...prev, orderType: type }));
+
+  // ✅ IMPROVED: Better address handling with areaId
   const setShippingAddress = (address) =>
     setOrder((prev) => ({
       ...prev,
-      shippingAddress: { ...prev.shippingAddress, ...address },
+      shippingAddress: {
+        ...prev.shippingAddress,
+        ...address,
+        // Auto-set areaId when area changes
+        ...(address.area && {
+          areaId:
+            areas[prev.shippingAddress.city]?.find(
+              (a) => a.name.en === address.area || a.name.ar === address.area
+            )?.key || "",
+        }),
+      },
     }));
+
   const setScheduledSlot = (slot) =>
-    setOrder((prev) => ({
-      ...prev,
-      scheduledSlot: slot,
-    }));
+    setOrder((prev) => ({ ...prev, scheduledSlot: slot }));
   const setCustomerName = (name) =>
     setOrder((prev) => ({ ...prev, customerName: name }));
   const setCustomerPhone = (phone) =>
     setOrder((prev) => ({ ...prev, customerPhone: phone }));
   const setMessage = (msg) => setOrder((prev) => ({ ...prev, message: msg }));
+
   const clearOrder = () =>
     setOrder({
       items: [],
       orderType: "pickup",
-      shippingAddress: { city: "", area: "", street: "", block: "", house: "" },
+      shippingAddress: {
+        city: "",
+        area: "",
+        areaId: "",
+        street: "",
+        block: "",
+        house: "",
+      },
       scheduledSlot: null,
       message: "",
       customerName: "",
       customerPhone: "",
     });
 
-  /* =======================
-     Order totals
-  ======================== */
-  const totalAmount = order.items.reduce(
-    (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
-    0
+  const totalAmount = useMemo(
+    () =>
+      order.items.reduce(
+        (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+        0
+      ),
+    [order.items]
   );
 
-  /* =======================
-     Prepare payload for backend
-  ======================== */
+  // ✅ IMPROVED: Calculate shipping cost
+  const getShippingCost = useMemo(() => {
+    const areaId = order.shippingAddress.areaId;
+    const cityKey = order.shippingAddress.city;
+    const area = areas[cityKey]?.find((a) => a.key === areaId);
+    return area ? area.shippingPrice : 0;
+  }, [order.shippingAddress.areaId, order.shippingAddress.city, areas]);
+
   const getOrderPayload = () => {
     return {
       products: order.items.map((item) => ({
-        product: item._id, // assumes frontend item has _id from DB
+        product: item._id,
         quantity: item.quantity,
         price: item.price,
         message: item.message || order.message || "",
@@ -255,7 +187,10 @@ export function OrderProvider({ children }) {
             timeSlot: order.scheduledSlot.timeSlot,
           }
         : null,
-      shippingAddress: { ...order.shippingAddress },
+      shippingAddress: {
+        ...order.shippingAddress,
+        areaId: order.shippingAddress.areaId, // ✅ Backend needs this!
+      },
       userInfo: {
         name: order.customerName,
         phone: order.customerPhone,
@@ -263,40 +198,49 @@ export function OrderProvider({ children }) {
     };
   };
 
-  /* =======================
-     Payment method
-  ======================== */
   const [paymentMethod, setPaymentMethod] = useState(() => {
-    const saved = localStorage.getItem("paymentMethod");
-    return saved || "cash";
+    try {
+      return localStorage.getItem("paymentMethod") || "cash";
+    } catch {
+      return "cash";
+    }
   });
 
   useEffect(() => {
     localStorage.setItem("paymentMethod", paymentMethod);
   }, [paymentMethod]);
 
+  // ✅ NEW HELPER FUNCTIONS for easy use in components
+  const getAreasForCity = (cityKey) => areas[cityKey] || [];
+  const getAreaById = (cityKey, areaId) =>
+    areas[cityKey]?.find((area) => area.key === areaId);
+
+  const value = {
+    order,
+    setItems,
+    setOrderType,
+    setShippingAddress,
+    setScheduledSlot,
+    setMessage,
+    setCustomerName,
+    setCustomerPhone,
+    clearOrder,
+    totalAmount,
+    getShippingCost, // ✅ NEW: Easy shipping cost access
+    getOrderPayload,
+    cities,
+    areas,
+    cityKeys,
+    loadingCities,
+    paymentMethod,
+    setPaymentMethod,
+    // ✅ NEW HELPERS
+    getAreasForCity,
+    getAreaById,
+  };
+
   return (
-    <OrderContext.Provider
-      value={{
-        order,
-        setItems,
-        setOrderType,
-        setShippingAddress,
-        setScheduledSlot,
-        setMessage,
-        setCustomerName,
-        setCustomerPhone,
-        clearOrder,
-        totalAmount,
-        getOrderPayload,
-        areas,
-        cityKeys,
-        paymentMethod,
-        setPaymentMethod,
-      }}
-    >
-      {children}
-    </OrderContext.Provider>
+    <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
   );
 }
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../hooks/useLanguage";
-import { useAuth } from "../../hooks/useAuth";
 import {
   FaArrowLeft,
   FaCheckCircle,
@@ -9,14 +8,15 @@ import {
   FaMapMarkerAlt,
   FaPhone,
   FaExclamationTriangle,
+  FaTruck,
+  FaMoneyBillWave,
 } from "react-icons/fa";
 import axios from "axios";
 
 function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { language, changeLanguage } = useLanguage();
-  const { token } = useAuth();
+  const { language } = useLanguage();
 
   const [orderDetails, setOrderDetails] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,32 +24,21 @@ function OrderDetails() {
 
   const dir = language === "ar" ? "rtl" : "ltr";
 
-  // ✅ نفس displayName function من OrderDetails
+  // ✅ Helper functions (enhanced for shipping)
   const displayName = (nameData) => {
-    if (!nameData) {
+    if (!nameData)
       return language === "ar" ? "منتج غير محدد" : "Product not specified";
-    }
-    if (typeof nameData === "string") {
-      return nameData;
-    }
-    if (nameData?.name) {
-      return displayName(nameData.name);
-    }
-    if (typeof nameData === "object") {
-      return (
-        nameData[language] ||
-        nameData.ar ||
-        nameData.en ||
-        nameData.title ||
-        nameData.productName ||
-        Object.values(nameData)[0] ||
-        (language === "ar" ? "منتج" : "Product")
-      );
-    }
-    return language === "ar" ? "منتج" : "Product";
+    if (typeof nameData === "string") return nameData;
+    if (nameData?.name) return displayName(nameData.name);
+    return (
+      nameData[language] ||
+      nameData.ar ||
+      nameData.en ||
+      nameData.title ||
+      (language === "ar" ? "منتج" : "Product")
+    );
   };
 
-  // ✅ نفس OrderDetails functions
   const formatDate = (dateString) => {
     if (!dateString) return language === "ar" ? "غير محدد" : "Not specified";
     const date = new Date(dateString);
@@ -72,87 +61,94 @@ function OrderDetails() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "paid":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "confirmed":
         return "bg-blue-100 text-blue-800 border-blue-200";
-      default:
+      case "delivered":
         return "bg-green-100 text-green-800 border-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "paid":
-        return <FaCheckCircle className="text-xs text-emerald-600" />;
+      case "pending":
+        return <FaClock className="text-xs text-yellow-600" />;
       case "confirmed":
         return <FaCheckCircle className="text-xs text-blue-600" />;
-      default:
+      case "delivered":
         return <FaCheckCircle className="text-xs text-green-600" />;
+      default:
+        return <FaCheckCircle className="text-xs text-gray-600" />;
     }
   };
 
   const getStatusText = (status) => {
     const statusMap = {
       ar: {
-        paid: "مدفوع",
+        pending: "معلق",
         confirmed: "مؤكد",
+        delivered: "مُسلم",
+        paid: "مدفوع",
       },
       en: {
-        paid: "Paid",
+        pending: "Pending",
         confirmed: "Confirmed",
+        delivered: "Delivered",
+        paid: "Paid",
       },
     };
     return statusMap[language]?.[status] || status;
   };
 
-  // Fetch order details by orderId
+  // ✅ NEW: Format currency
+  const formatCurrency = (amount) => {
+    return Number(amount || 0).toFixed(3) + " KWD";
+  };
+
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      if (!orderId || !token) {
+      if (!orderId) {
+        setError(
+          language === "ar" ? "Order ID is missing" : "Order ID is missing"
+        );
         setLoading(false);
-        if (!orderId) {
-          setError("Order ID is missing");
-        } else if (!token) {
-          setError("Authentication required");
-        }
         return;
       }
 
       try {
         setLoading(true);
         setError(null);
-
-        const API_BASE_URL = "http://localhost:5000";
-        const res = await axios.get(`${API_BASE_URL}/api/orders/${orderId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        const orderData = res.data.data || res.data;
-        console.log("📦 Order Details Data:", orderData);
-        console.log("📍 Shipping Address:", orderData?.shippingAddress);
-        setOrderDetails(orderData);
-      } catch (err) {
-        console.error("❌ Error fetching order details:", err);
-        setError(
-          err.response?.data?.message ||
-            (language === "ar" ? "فشل في تحميل الطلب" : "Failed to load order")
+        const response = await axios.get(
+          `https://lilian-backend-7bjc.onrender.com/api/orders/${orderId}`,
+          { withCredentials: true }
         );
+        setOrderDetails(response.data.data || response.data);
+      } catch (err) {
+        console.error(
+          "❌ Order fetch failed:",
+          err.response?.data || err.message
+        );
+        let errorMsg =
+          language === "ar" ? "فشل في تحميل الطلب" : "Failed to load order";
+        if (err.response?.status === 401) {
+          errorMsg = language === "ar" ? "يرجى تسجيل الدخول" : "Please log in";
+        } else if (err.response?.status === 404) {
+          errorMsg = language === "ar" ? "الطلب غير موجود" : "Order not found";
+        }
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrderDetails();
-  }, [orderId, token, language]);
+  }, [orderId, language]);
 
   const handleBack = () => navigate(-1);
-  const toggleLanguage = () => changeLanguage(language === "en" ? "ar" : "en");
 
-  // ✅ نفس Loading state من OrderDetails
   if (loading) {
     return (
       <div
@@ -171,7 +167,6 @@ function OrderDetails() {
     );
   }
 
-  // ✅ نفس Error state من OrderDetails
   if (error || !orderDetails) {
     return (
       <div
@@ -183,10 +178,7 @@ function OrderDetails() {
           <h2 className="text-xl font-bold text-gray-800 mb-2">
             {language === "ar" ? "خطأ في تحميل الطلب" : "Failed to load order"}
           </h2>
-          <p className="text-gray-500 mb-6">
-            {error ||
-              (language === "ar" ? "الطلب غير موجود" : "Order not found")}
-          </p>
+          <p className="text-gray-500 mb-6">{error}</p>
           <button
             onClick={handleBack}
             className="px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600"
@@ -198,9 +190,31 @@ function OrderDetails() {
     );
   }
 
+  // ✅ Calculate revenue breakdown
+  const subtotal =
+    orderDetails.products?.reduce(
+      (sum, item) => sum + item.price * (item.quantity || 1),
+      0
+    ) || 0;
+  const shippingCost = orderDetails.shippingCost || 0;
+  const grandTotal = orderDetails.totalAmount || 0;
+
+  const getFullAddress = () => {
+    const addr = orderDetails.shippingAddress;
+    if (!addr) return language === "ar" ? "غير محدد" : "Not specified";
+    const parts = [];
+    if (addr.city) parts.push(addr.city);
+    if (addr.area) parts.push(addr.area);
+    if (addr.street) parts.push(`St ${addr.street}`);
+    if (addr.block) parts.push(`Blck ${addr.block}`);
+    if (addr.house) parts.push(`Hse ${addr.house}`);
+    return (
+      parts.join(", ") || (language === "ar" ? "غير محدد" : "Not specified")
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f5f5]" dir={dir}>
-      {/* Header - نفس OrderDetails */}
       <div className="bg-white flex items-center justify-between px-5 py-3 border-b border-b-gray-300 sticky top-0 z-50 shadow-sm">
         <button
           onClick={handleBack}
@@ -211,21 +225,12 @@ function OrderDetails() {
         <p className="capitalize font-bold text-lg text-gray-900">
           {language === "ar" ? "تفاصيل الطلب" : "Order Details"}
         </p>
-        <button
-          className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 cursor-pointer"
-          type="button"
-          onClick={toggleLanguage}
-        >
-          <span className="text-lg font-bold text-gray-800">
-            {language === "en" ? "ع" : "EN"}
-          </span>
-        </button>
+        <div className="w-8 h-8" />
       </div>
 
-      {/* Content card - نفس OrderDetails */}
       <div className="px-3 py-4 flex-1 overflow-y-auto">
         <div className="bg-white rounded-2xl shadow-lg px-6 py-6 flex flex-col h-full">
-          {/* Order Header - نفس OrderDetails */}
+          {/* Order Header */}
           <div className="mb-8 pb-6 border-b border-gray-100">
             <div className="flex items-start justify-between mb-4">
               <span className="font-black text-2xl text-gray-900 tracking-tight">
@@ -249,7 +254,58 @@ function OrderDetails() {
             </div>
           </div>
 
-          {/* Order Items - نفس OrderDetails */}
+          {/* ✅ Order Information - Shipping + Customer */}
+          <div className="mb-8 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">
+              {language === "ar" ? "معلومات الطلب" : "Order Information"}
+            </h2>
+
+            {/* Address */}
+            <div className="flex items-start gap-3 p-4 bg-indigo-50 rounded-xl border-l-4 border-indigo-500">
+              <FaMapMarkerAlt className="text-xl mt-1 text-indigo-600 shrink-0" />
+              <div className="flex-1">
+                <span className="font-semibold text-gray-900 block mb-1">
+                  {getFullAddress()}
+                </span>
+                <span className="text-xs bg-white px-3 py-1 rounded-full text-indigo-700 font-medium">
+                  {orderDetails.orderType === "pickup"
+                    ? language === "ar"
+                      ? "استلام"
+                      : "Pickup"
+                    : language === "ar"
+                    ? "توصيل"
+                    : "Delivery"}
+                </span>
+              </div>
+            </div>
+
+            {/* Customer Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-start gap-3 p-4 bg-emerald-50 rounded-xl border-l-4 border-emerald-500">
+                <FaPhone className="text-xl mt-1 text-emerald-600 shrink-0" />
+                <div>
+                  <span className="font-semibold text-gray-900 block mb-1">
+                    {orderDetails.userInfo?.name ||
+                      (language === "ar" ? "غير محدد" : "Not specified")}
+                  </span>
+                  <span className="text-sm text-emerald-700">
+                    {orderDetails.userInfo?.phone}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border-l-4 border-blue-500">
+                <FaMoneyBillWave className="text-xl text-blue-600 shrink-0" />
+                <span className="font-semibold text-gray-900">
+                  {language === "ar" ? "طريقة الدفع:" : "Payment Method:"}
+                  <span className="capitalize ml-1">
+                    {orderDetails.paymentMethod || "cash"}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Products List */}
           <div className="mb-8">
             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               {language === "ar" ? "العناصر" : "Order Items"}
@@ -262,17 +318,10 @@ function OrderDetails() {
                 const productImage =
                   item.product?.images?.[0] ||
                   item.product?.image ||
-                  item.images?.[0] ||
-                  item.image ||
                   "/api/placeholder/80/80";
                 const productName = displayName(
-                  item.product?.name ||
-                    item.product?.title ||
-                    item.name ||
-                    item.productName ||
-                    `Product ${index + 1}`
+                  item.product?.name || item.name || `Product ${index + 1}`
                 );
-
                 return (
                   <div
                     key={item._id || index}
@@ -307,11 +356,9 @@ function OrderDetails() {
                         </span>
                       </div>
                       {item.message && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
-                          <span className="text-sm text-yellow-800 font-medium">
-                            📝 {item.message}
-                          </span>
-                        </div>
+                        <p className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full">
+                          {item.message}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -320,179 +367,38 @@ function OrderDetails() {
             </div>
           </div>
 
-          {/* Order Information - نفس OrderDetails */}
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">
-              {language === "ar" ? "معلومات الطلب" : "Order Information"}
-            </h2>
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border">
-                <div className="flex flex-col gap-3">
-                  <div className="text-2xl font-semibold">
-                    {orderDetails.orderType === "delivery"
-                      ? language === "ar"
-                        ? "معلومات التوصيل"
-                        : "Delivery Info"
-                      : language === "ar"
-                      ? "معلومات الاستلام"
-                      : "Pickup Info"}
-                  </div>
-                  <div className="flex flex-col">
-                    {(() => {
-                      const addr = orderDetails.shippingAddress;
-                      if (!addr) {
-                        return (
-                          <p className="font-bold text-gray-900 flex items-center gap-3 text-lg">
-                            {language === "ar" ? "العنوان:" : "Address:"}
-                            <span className="text-gray-500 text-sm">
-                              {language === "ar" ? "غير محدد" : "Not specified"}
-                            </span>
-                          </p>
-                        );
-                      }
-
-                      const parts = [];
-                      // Filter out "Default City" and "Default Area"
-                      if (
-                        addr.city &&
-                        addr.city.trim().toLowerCase() !== "default city"
-                      ) {
-                        parts.push(addr.city);
-                      }
-                      if (
-                        addr.area &&
-                        addr.area.trim().toLowerCase() !== "default area"
-                      ) {
-                        parts.push(addr.area);
-                      }
-                      // Add street, block, house with translated labels
-                      if (addr.street) {
-                        parts.push(
-                          language === "ar"
-                            ? `شارع ${addr.street}`
-                            : `St ${addr.street}`
-                        );
-                      }
-                      if (addr.block) {
-                        parts.push(
-                          language === "ar"
-                            ? `بلوك ${addr.block}`
-                            : `Blck ${addr.block}`
-                        );
-                      }
-                      if (addr.house) {
-                        parts.push(
-                          language === "ar"
-                            ? `منزل ${addr.house}`
-                            : `Hse ${addr.house}`
-                        );
-                      }
-
-                      const displayAddress =
-                        parts.length > 0
-                          ? parts.join(", ")
-                          : language === "ar"
-                          ? "غير محدد"
-                          : "Not specified";
-
-                      return (
-                        <p className="font-bold text-gray-900 flex items-center gap-3 text-lg">
-                          {language === "ar" ? "العنوان:" : "Address:"}
-                          <span className="text-gray-500 text-sm capitalize">
-                            {displayAddress}
-                          </span>
-                        </p>
-                      );
-                    })()}
-                    {orderDetails.shippingAddress?.street && (
-                      <p className="font-bold text-blue-600 flex items-center gap-3 text-lg">
-                        {language === "ar" ? "الشارع:" : "Street:"}
-                        <span className="text-gray-500 text-sm">
-                          {orderDetails.shippingAddress.street}
-                        </span>
-                      </p>
-                    )}
-                    {orderDetails.shippingAddress?.block && (
-                      <p className="font-bold text-blue-600 flex items-center gap-3 text-lg">
-                        {language === "ar" ? "البلوك:" : "Block:"}
-                        <span className="text-gray-500 text-sm">
-                          {orderDetails.shippingAddress.block}
-                        </span>
-                      </p>
-                    )}
-                    {orderDetails.shippingAddress?.house && (
-                      <p className="font-bold text-blue-600 flex items-center gap-3 text-lg">
-                        {language === "ar" ? "المنزل:" : "House:"}
-                        <span className="text-gray-500 text-sm">
-                          {orderDetails.shippingAddress.house}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border">
-                <div className="flex flex-col gap-3">
-                  <div className="text-2xl font-semibold">
-                    {language === "ar" ? "معلومات العميل" : "User Info"}
-                  </div>
-                  <div className="flex flex-col">
-                    <p className="font-bold text-gray-900 flex items-center gap-3 text-lg">
-                      {language === "ar" ? "الاسم:" : "Name:"}
-                      <span className="text-gray-500 text-sm">
-                        {orderDetails.userInfo?.name ||
-                          (language === "ar" ? "غير محدد" : "Not specified")}
-                      </span>
-                    </p>
-                    <p className="font-bold text-emerald-600 flex items-center gap-3 text-lg">
-                      {language === "ar" ? "الهاتف:" : "Phone:"}
-                      <span className="text-gray-500 text-sm">
-                        {orderDetails.userInfo?.phone ||
-                          (language === "ar" ? "غير محدد" : "Not specified")}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Total - نفس OrderDetails */}
+          {/* Revenue Breakdown + Grand Total (revenue part removed) */}
           <div className="border-t border-gray-100 pt-8">
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-2xl">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-black text-gray-900">
-                  {language === "ar" ? "الإجمالي" : "Total"}
-                </span>
-                <span className="text-3xl font-black text-green-600">
-                  {orderDetails.totalAmount?.toFixed(3) || "0.000"} KWD
-                </span>
-              </div>
-              {orderDetails.paymentMethod && (
-                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-l-4 border-emerald-500">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <FaCheckCircle className="text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">
-                      {language === "ar" ? "طريقة الدفع:" : "Payment Method:"}{" "}
-                      {orderDetails.paymentMethod === "fatora"
-                        ? language === "ar"
-                          ? "مدفوعة بـ MyFatoorah"
-                          : "Paid via MyFatoorah"
-                        : language === "ar"
-                        ? "الدفع عند الاستلام"
-                        : "Cash on Delivery"}
-                    </p>
-                    {orderDetails.paymentId && (
-                      <p className="text-sm text-emerald-600">
-                        Payment ID: {orderDetails.paymentId}
-                      </p>
-                    )}
-                  </div>
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-lg text-gray-700 font-semibold">
+                  <span>
+                    {language === "ar" ? "المجموع الفرعي" : "Subtotal"}
+                  </span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
-              )}
+
+                {orderDetails.orderType === "delivery" && shippingCost > 0 && (
+                  <div className="flex justify-between text-lg text-gray-700 font-semibold">
+                    <span>
+                      <FaTruck className="inline mr-1 text-green-600" />
+                      {language === "ar" ? "تكلفة التوصيل" : "Shipping Cost"}
+                    </span>
+                    <span className="text-green-600">
+                      {formatCurrency(shippingCost)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between pt-4 border-t border-gray-200">
+                  <span className="text-2xl font-black text-gray-900">
+                    {language === "ar" ? "الإجمالي النهائي" : "Grand Total"}
+                  </span>
+                  <span className="text-3xl font-black text-green-600">
+                    {formatCurrency(grandTotal)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

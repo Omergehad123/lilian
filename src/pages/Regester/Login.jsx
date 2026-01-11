@@ -70,6 +70,11 @@ function Login() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    window.location.href =
+      "https://lilian-backend-7bjc.onrender.com/api/auth/google";
+  };
+
   return (
     <div className="my-10" dir={dir}>
       <h1 className="capitalize font-semibold text-gray-500 mb-5 text-2xl mx-5">
@@ -123,21 +128,13 @@ function Login() {
         </h1>
 
         <div className="flex flex-col">
-          <Link
-            to="/"
-            className="flex items-center gap-10 px-5 text-[#666D7D] text-sm border-y border-gray-300 py-3 capitalize font-semibold hover:bg-gray-200"
-          >
-            <FaApple className="text-2xl text-black" />
-            {t.appleLabel}
-          </Link>
-
-          <Link
-            to="/"
+          <button
+            onClick={handleGoogleLogin}
             className="flex items-center gap-10 px-5 text-[#666D7D] text-sm border-y border-gray-300 py-3 capitalize font-semibold hover:bg-gray-200"
           >
             <FcGoogle className="text-2xl" />
             {t.googleLabel}
-          </Link>
+          </button>
         </div>
 
         <button

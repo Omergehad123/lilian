@@ -32,12 +32,9 @@ function HeroSection() {
     if (!order?.scheduledSlot) {
       return t.chooseTime || (language === "ar" ? "اختر الوقت" : "Choose time");
     }
-
-    // ✅ تحقق من وجود date و startTime قبل الوصول ليهم
     if (!order.scheduledSlot.date || !order.scheduledSlot.startTime) {
       return t.chooseTime || (language === "ar" ? "اختر الوقت" : "Choose time");
     }
-
     return (
       <>
         {order.scheduledSlot.date.split("-").reverse().join("/")}
@@ -50,7 +47,43 @@ function HeroSection() {
 
   return (
     // wrapper with direction
-    <div dir={dir} className={dir === "rtl" ? "rtl" : "ltr"}>
+    <div dir={dir} className={dir === "rtl" ? "rtl" : "ltr"} style={{position: "relative"}}>
+      {/* Sticky WhatsApp icon button */}
+      <a
+        href="https://wa.me/96566222686"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: "fixed",
+          top: "50%",
+          right: 0,
+          transform: "translateY(-50%)",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          background: "#25D366",
+          color: "#fff",
+          padding: "12px",
+          borderTopLeftRadius: "24px",
+          borderBottomLeftRadius: "24px",
+          fontWeight: "bold",
+          fontSize: "20px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          textDecoration: "none"
+        }}
+        aria-label="Contact us on WhatsApp"
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 32 32"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{flexShrink: 0}}
+        >
+          <path d="M16.002 2.667c-7.362 0-13.334 6.008-13.334 13.417 0 2.364.634 4.661 1.836 6.674L2.668 29.335l6.753-1.755c1.963 1.072 4.178 1.643 6.58 1.643 7.362 0 13.334-6.008 13.334-13.417S23.364 2.667 16.002 2.667zm-.006 24.001c-2.096 0-4.143-.558-5.933-1.616l-.423-.249-4.013 1.042 1.073-3.91-.277-.43c-1.156-1.739-1.767-3.761-1.767-5.84 0-6.114 4.951-11.09 11.063-11.09 6.112 0 11.063 4.976 11.063 11.09.001 6.114-4.95 11.091-11.062 11.091zm6.068-8.365c-.328-.164-1.946-.959-2.247-1.072-.301-.111-.52-.166-.738.164-.22.329-.847 1.072-1.04 1.292-.191.22-.383.247-.711.082-.328-.164-1.385-.511-2.641-1.629-.976-.87-1.635-1.943-1.828-2.271-.192-.329-.02-.505.146-.667.15-.147.329-.382.494-.573.167-.195.225-.329.338-.548.109-.219.054-.411-.027-.573-.082-.164-.738-1.777-1.012-2.421-.267-.639-.538-.552-.738-.561-.192-.01-.409-.012-.627-.012-.218 0-.572.082-.873.38-.301.299-1.145 1.119-1.145 2.728 0 1.611 1.172 3.169 1.336 3.387.164.219 2.308 3.528 5.594 4.563.782.23 1.391.367 1.865.48.784.19 1.498.163 2.068.1.632-.071 1.946-.792 2.223-1.557.274-.763.274-1.417.192-1.557-.08-.14-.299-.223-.627-.385z"/>
+        </svg>
+      </a>
       <Swipper />
 
       {/* Mobile header */}

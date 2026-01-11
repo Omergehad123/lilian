@@ -31,9 +31,8 @@ export const ProductsProvider = ({ children }) => {
     setError(null);
 
     try {
-      console.log("🔄 Fetching products...");
       const res = await fetch(
-        "https://lilian-backend.onrender.com/api/products"
+        "https://lilian-backend-7bjc.onrender.com/api/products"
       );
 
       if (!res.ok) {
@@ -41,7 +40,6 @@ export const ProductsProvider = ({ children }) => {
       }
 
       const data = await res.json();
-      console.log("✅ Products loaded:", data.data?.length || 0);
 
       setProducts(data.data || []);
     } catch (error) {
@@ -60,7 +58,6 @@ export const ProductsProvider = ({ children }) => {
 
   // Manual refresh
   const refreshProducts = useCallback(() => {
-    console.log("🔄 Manual refresh triggered");
     fetchProducts();
   }, [fetchProducts]);
 

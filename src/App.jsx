@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
+import emailjs from "@emailjs/browser";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Homepage from "./pages/HomePage/Homepage";
@@ -19,21 +20,32 @@ import ReviewOrder from "./fetures/order/ReviewOrder";
 
 function App() {
   const location = useLocation();
-  const hideHeaderFooter =
-    location.pathname === "/register" ||
-    location.pathname === "/cart" ||
-    location.pathname === "/checkout" ||
-    location.pathname === "/orderMode" ||
-    location.pathname === "/aboutUs" ||
-    location.pathname === "/time" ||
-    location.pathname === "/orders" ||
-    location.pathname === "/order/:orderId" ||
-    location.pathname === "/products/:productSlug" ||
-    location.pathname === "/payment-success" ||
-    location.pathname === "/payment-failed" ||
-    location.pathname === "/reviewOrder" ||
-    location.pathname === "/search";
 
+  useEffect(() => {
+    emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY);
+  }, []);
+
+  const hideHeaderFooter = [
+    "/register",
+    "/cart",
+    "/checkout",
+    "/orderMode",
+    "/about-us",
+    "/aboutUs",
+    "/time",
+    "/orders",
+    "/order/:orderId",
+    "/payment-success",
+    "/payment-failed",
+    "/reviewOrder",
+    "/search",
+  ].includes(location.pathname);
+
+  useEffect(() => {
+    if (import.meta.env.VITE_EMAILJS_PUBLIC_KEY) {
+      emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY);
+    }
+  }, []);
   return (
     <div className="App">
       {!hideHeaderFooter && <Header />}

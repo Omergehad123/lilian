@@ -56,6 +56,11 @@ function Signup() {
     setSubmitting(false);
   };
 
+  const handleGoogleLogin = () => {
+    window.location.href =
+      "https://lilian-backend-7bjc.onrender.com/api/auth/google";
+  };
+
   return (
     <div className="my-10" dir={dir}>
       <h1 className="capitalize font-semibold text-gray-500 mb-5 text-2xl mx-5">
@@ -114,9 +119,7 @@ function Signup() {
         </div>
 
         {serverError && (
-          <p className="text-red-500 text-sm mt-3 mx-5">
-            {serverError}
-          </p>
+          <p className="text-red-500 text-sm mt-3 mx-5">{serverError}</p>
         )}
 
         <span className="my-15 text-gray-500 uppercase font-semibold w-fit mx-auto relative block before:content-[''] before:absolute before:h-[2px] before:w-[90px] before:left-8 before:top-3 before:bg-gray-500 after:content-[''] after:absolute after:h-[2px] after:w-[90px] after:right-8 after:top-3 after:bg-gray-500">
@@ -128,21 +131,13 @@ function Signup() {
         </h1>
 
         <div className="flex flex-col">
-          <Link
-            to="/"
-            className="flex items-center gap-10 px-5 text-[#666D7D] text-sm border-y border-gray-300 py-3 capitalize font-semibold hover:bg-gray-200"
-          >
-            <FaApple className="text-2xl text-black" />
-            {t.appleLabel}
-          </Link>
-
-          <Link
-            to="/"
+          <button
+            onClick={handleGoogleLogin}
             className="flex items-center gap-10 px-5 text-[#666D7D] text-sm border-y border-gray-300 py-3 capitalize font-semibold hover:bg-gray-200"
           >
             <FcGoogle className="text-2xl" />
             {t.googleLabel}
-          </Link>
+          </button>
         </div>
 
         <button
@@ -150,7 +145,9 @@ function Signup() {
           className="absolute w-[95%] left-1/2 -translate-x-1/2 -bottom-10 py-3 bg-gray-300 rounded-md hover:bg-gray-400 transition capitalize"
           disabled={submitting || authLoading}
         >
-          {submitting || authLoading ? t.signupLoading || "Signing up..." : t.signupButton}
+          {submitting || authLoading
+            ? t.signupLoading || "Signing up..."
+            : t.signupButton}
         </button>
       </form>
     </div>
