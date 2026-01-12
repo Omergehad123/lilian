@@ -2,7 +2,10 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- اللوجو كأيقونة للمتصفح (Favicon) - ضروري لظهوره بجانب اسم الموقع في البحث -->
+    <link rel="icon" type="image/jpeg" href="https://e.top4top.io/p_3664ofggs0.jpg" />
+    <link rel="apple-touch-icon" href="https://e.top4top.io/p_3664ofggs0.jpg" />
+    
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
@@ -29,7 +32,7 @@
     />
     <link rel="canonical" href="https://lilyandelarosekw.com/" />
 
-    <!-- Open Graph (Instagram, WhatsApp, Facebook) -->
+    <!-- Open Graph (Instagram, WhatsApp, Facebook) - اللوجو للمشاركة -->
     <meta property="og:site_name" content="ليليان دي لاروز" />
     <meta property="og:title" content="Lilian de Larose | ليليان دي لاروز" />
     <meta
@@ -39,15 +42,37 @@
     <meta property="og:url" content="https://lilyandelarosekw.com/" />
     <meta
       property="og:image"
-      content="https://lilyandelarosekw.com/og-image.jpg"
+      content="https://e.top4top.io/p_3664ofggs0.jpg"
     />
     <meta property="og:type" content="website" />
+
+    <!-- Twitter Card - لظهور الصورة في تويتر -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://e.top4top.io/p_3664ofggs0.jpg" />
+
+    <!-- JSON-LD Structured Data: لضمان ربط اللوجو بالعلامة التجارية في جوجل بسرعة -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FlowerShop",
+      "name": "ليليان دي لاروز",
+      "url": "https://lilyandelarosekw.com/",
+      "logo": "https://e.top4top.io/p_3664ofggs0.jpg",
+      "image": "https://e.top4top.io/p_3664ofggs0.jpg",
+      "description": "أرقى باقات الورد والهدايا المنسقة في الكويت",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "KW"
+      }
+    }
+    </script>
 
     <!-- تحسين أداء المتصفح -->
     <meta name="theme-color" content="#db2777" />
   </head>
-  <body className="antialiased">
+  <body class="antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+
