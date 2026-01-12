@@ -24,8 +24,6 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
 
-      console.log("🔑 Auth check response:", data);
-
       if (response.ok) {
         // ✅ FIXED: Handle different response structures
         if (data.user) {
@@ -95,7 +93,6 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
 
-      console.log("🔑 Login response:", data);
 
       if (!response.ok) {
         setLoading(false);
@@ -152,8 +149,6 @@ export const AuthProvider = ({ children }) => {
       );
 
       const data = await response.json();
-
-      console.log("🔑 Register response:", data);
 
       if (!response.ok) {
         setLoading(false);

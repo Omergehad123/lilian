@@ -33,13 +33,11 @@ function OrderMode() {
   // Pickup: single static Hawally location
   const pickupCityKey = "HAWL";
   const pickupCityLabel =
-    language === "ar"
-      ? "حولي"
-      : (t.governorates?.[pickupCityKey] || "Hawally");
+    language === "ar" ? "حولي" : t.governorates?.[pickupCityKey] || "Hawally";
   const pickupAreaObj = {
     key: "pickup_single_hawally",
     name: { en: "Hawally Branch", ar: "فرع حولي" },
-    shippingPrice: 0
+    shippingPrice: 0,
   };
 
   const pickupCity = {
@@ -200,7 +198,9 @@ function OrderMode() {
                 </span>
                 <IoIosArrowDown
                   className={`text-gray-500 transition-transform ${
-                    openCity === city.key || mode === "pickup" ? "rotate-180" : ""
+                    openCity === city.key || mode === "pickup"
+                      ? "rotate-180"
+                      : ""
                   }`}
                 />
               </button>
@@ -248,7 +248,7 @@ function OrderMode() {
                                   }
                                 </span>
                                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2">
-                                  KWD {areaObj.shippingPrice.toFixed(2)}
+                                  kw {areaObj.shippingPrice.toFixed(2)}
                                 </span>
                               </div>
                             </button>

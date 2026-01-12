@@ -4,7 +4,6 @@ import {
   FaBars,
   FaSearch,
   FaArrowLeft,
-  FaApple,
   FaInfoCircle,
 } from "react-icons/fa";
 import { FaClockRotateLeft } from "react-icons/fa6";

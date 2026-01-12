@@ -66,15 +66,38 @@ function Orders() {
     try {
       setCancelLoading((prev) => ({ ...prev, [order._id]: true }));
 
-      // ✅ STEP 1: DELETE FROM DATABASE (NEW ROUTE)
+      // ✅ STEP 0: EXTRACT PROMO CODE from cancelled order
+      const promoCode = order.promoCode;
+      console.log("🎫 Promo code to restore:", promoCode);
+
+      // ✅ STEP 1: DELETE ORDER FROM DATABASE
       console.log("🗑️ Deleting order from database...");
       await axios.delete(
         `https://lilian-backend-7bjc.onrender.com/api/orders/${order._id}`,
-        { withCredentials: true } // ✅ Uses cookie auth (matches your GET)
+        { withCredentials: true }
       );
       console.log("✅ Order deleted from database");
 
-      // ✅ STEP 2: SEND EMAIL NOTIFICATION TO OWNER
+      // ✅ STEP 2: RESTORE PROMO CODE TO DATABASE (if exists)
+      if (promoCode) {
+        console.log("🔓 Restoring promo code:", promoCode);
+        try {
+          await axios.post(
+            `https://lilian-backend-7bjc.onrender.com/api/promos/${promoCode}/restore`,
+            { orderId: order._id },
+            { withCredentials: true }
+          );
+          console.log("✅ Promo code restored successfully");
+        } catch (promoErr) {
+          console.warn(
+            "⚠️ Promo restore failed (but order deleted):",
+            promoErr.response?.data
+          );
+          // Continue anyway - order deletion is priority
+        }
+      }
+
+      // ✅ STEP 3: SEND CANCELLATION EMAIL
       const itemsList = order.products
         .map((item) => {
           const name = item.product?.name || item.name;
@@ -84,7 +107,7 @@ function Orders() {
               : name?.[language] || name?.en || name?.ar || "Product";
           return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee">
             <span>${displayName} (x${item.quantity})</span>
-            <strong>${(item.price * item.quantity).toFixed(3)} KWD</strong>
+            <strong>${(item.price * item.quantity).toFixed(3)} kw</strong>
           </div>`;
         })
         .join("");
@@ -92,7 +115,7 @@ function Orders() {
       const emailData = {
         order_id: order._id,
         order_number: order._id.slice(-6).toUpperCase(),
-        total: `${order.totalAmount?.toFixed(3) || 0} KWD`,
+        total: `${order.totalAmount?.toFixed(3) || 0} kw`,
         customer_name: order.userInfo?.name || "Unknown Customer",
         customer_phone: order.userInfo?.phone || "No phone",
         items_count: order.products?.length || 0,
@@ -107,6 +130,7 @@ function Orders() {
           : "ASAP",
         items_list: itemsList,
         cancellation_reason: "Customer deleted order via mobile app",
+        promo_code: promoCode || "None", // ✅ Include promo info in email
         status: "DELETED BY CUSTOMER",
       };
 
@@ -114,13 +138,17 @@ function Orders() {
       await emailjs.send("service_1ti4s08", "template_489g9rh", emailData);
       console.log("✅ Cancellation email sent to owner");
 
-      // ✅ STEP 3: Remove from frontend immediately
+      // ✅ STEP 4: Remove from frontend
       setOrders((prev) => prev.filter((item) => item._id !== order._id));
 
       alert(
         language === "ar"
-          ? "✅ تم حذف الطلب نهائياً وإرسال إشعار للمتجر!"
-          : "✅ Order permanently deleted & store notified!"
+          ? `✅ تم حذف الطلب نهائياً${
+              promoCode ? ` واستعادة كود ${promoCode}` : ""
+            }!`
+          : `✅ Order deleted &${
+              promoCode ? ` promo ${promoCode} restored` : " store notified"
+            }!`
       );
     } catch (err) {
       console.error("❌ Delete failed:", err.response?.data || err.message);
@@ -300,7 +328,7 @@ function Orders() {
               </div>
               <div className="flex items-center justify-end gap-2 text-sm">
                 <span className="font-bold text-lg text-black">
-                  {order.totalAmount?.toFixed(3)} KWD
+                  {order.totalAmount?.toFixed(3)} kw
                 </span>
               </div>
             </div>

@@ -105,7 +105,7 @@ function OrderDetails() {
 
   // ✅ NEW: Format currency
   const formatCurrency = (amount) => {
-    return Number(amount || 0).toFixed(3) + " KWD";
+    return Number(amount || 0).toFixed(3) + " kw";
   };
 
   useEffect(() => {
@@ -125,20 +125,13 @@ function OrderDetails() {
           `https://lilian-backend-7bjc.onrender.com/api/orders/${orderId}`,
           { withCredentials: true }
         );
-        setOrderDetails(response.data.data || response.data);
+
+        const orderData = response.data.data || response.data;
+        console.log("🔍 FULL ORDER DATA:", orderData); // 🧪 DEBUG
+        console.log("🔍 specialInstructions:", orderData.specialInstructions); // 🧪 DEBUG
+
+        setOrderDetails(orderData);
       } catch (err) {
-        console.error(
-          "❌ Order fetch failed:",
-          err.response?.data || err.message
-        );
-        let errorMsg =
-          language === "ar" ? "فشل في تحميل الطلب" : "Failed to load order";
-        if (err.response?.status === 401) {
-          errorMsg = language === "ar" ? "يرجى تسجيل الدخول" : "Please log in";
-        } else if (err.response?.status === 404) {
-          errorMsg = language === "ar" ? "الطلب غير موجود" : "Order not found";
-        }
-        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -305,6 +298,25 @@ function OrderDetails() {
             </div>
           </div>
 
+          {/* Special Instructions */}
+          {orderDetails.specialInstructions && (
+            <div className="mb-8">
+              <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl border-l-4 border-yellow-500">
+                <FaExclamationTriangle className="text-xl mt-1 text-yellow-600 shrink-0" />
+                <div className="flex-1">
+                  <span className="font-bold text-gray-900 block mb-1">
+                    {language === "ar"
+                      ? "ملاحظات خاصة"
+                      : "Special Instructions"}
+                  </span>
+                  <span className="text-sm text-yellow-800 break-words whitespace-pre-line">
+                    {orderDetails.specialInstructions}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Products List */}
           <div className="mb-8">
             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -343,7 +355,7 @@ function OrderDetails() {
                           {productName}
                         </span>
                         <span className="font-bold text-lg text-green-600 shrink-0">
-                          {(item.price * (item.quantity || 1)).toFixed(3)} KWD
+                          {(item.price * (item.quantity || 1)).toFixed(3)} kw
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -351,7 +363,7 @@ function OrderDetails() {
                           {item.quantity || 1}x
                         </span>
                         <span className="text-gray-900">
-                          {item.price?.toFixed(3)} KWD /{" "}
+                          {item.price?.toFixed(3)} kw /{" "}
                           {language === "ar" ? "قطعة" : "unit"}
                         </span>
                       </div>

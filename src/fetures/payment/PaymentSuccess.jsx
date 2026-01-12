@@ -1,33 +1,66 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../../hooks/useLanguage";
+import { useCart } from "../../hooks/useCart";
+import { useOrder } from "../../hooks/useOrder";
 import {
   FaArrowLeft,
   FaCheckCircle,
   FaTruck,
   FaMapMarkerAlt,
   FaPhone,
+  FaTag,
 } from "react-icons/fa";
 import axios from "axios";
 import emailjs from "@emailjs/browser";
 
 function PaymentSuccess() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const orderId = searchParams.get("orderId");
   const paymentId = searchParams.get("paymentId");
   const { language } = useLanguage();
+  const { clearCart } = useCart();
+  const { clearOrder } = useOrder();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [emailSent, setEmailSent] = useState(false);
-  const hasSentEmail = useRef(false); // Ensures single owner email only
+  const [visitedOtherPage, setVisitedOtherPage] = useState(false);
+  const [cleanupDone, setCleanupDone] = useState(false); // ✅ NEW: Track cleanup
+  const hasSentEmail = useRef(false);
 
   const dir = language === "ar" ? "rtl" : "ltr";
   emailjs.init("JaNW9V45GnMviSTP1");
 
-  // 🔥 OWNER EMAIL ONLY - Single execution guaranteed
+  useEffect(() => {
+    const isFreshCashOrder = location.state?.justCreated && orderId;
+    const hasLeftSuccessPage = localStorage.getItem("paymentSuccessVisited");
+
+    if (hasLeftSuccessPage === "true" && orderId) {
+      setVisitedOtherPage(true);
+      localStorage.removeItem("paymentSuccessVisited");
+      navigate("/", { replace: true });
+      return;
+    }
+
+    // ✅ CRITICAL: Cleanup cart/order ONLY for fresh cash orders
+    if (isFreshCashOrder && !cleanupDone) {
+      const cleanupTimer = setTimeout(() => {
+        console.log("✅ PaymentSuccess: Clearing cart & order contexts");
+        clearCart();
+        clearOrder();
+        localStorage.removeItem("checkoutData");
+        localStorage.removeItem("cart");
+        setCleanupDone(true);
+      }, 1500);
+
+      return () => clearTimeout(cleanupTimer);
+    }
+  }, [location.state, orderId, navigate, clearCart, clearOrder, cleanupDone]);
+
   useEffect(() => {
     if (order?._id && !loading && !error && !hasSentEmail.current) {
       hasSentEmail.current = true;
@@ -43,7 +76,7 @@ function PaymentSuccess() {
                   : name?.[language] || name?.en || name?.ar || "Product";
               return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee">
                 <span>${displayName} (x${item.quantity})</span>
-                <strong>${(item.price * item.quantity).toFixed(3)} KWD</strong>
+                <strong>${(item.price * item.quantity).toFixed(3)} kw</strong>
               </div>`;
             })
             .join("");
@@ -51,13 +84,20 @@ function PaymentSuccess() {
           const emailData = {
             order_id: order._id,
             order_number: order._id.slice(-6).toUpperCase(),
-            total: `${order.totalAmount?.toFixed(3) || 0} KWD`,
+            total: `${order.totalAmount?.toFixed(3) || 0} kw`,
             subtotal: `${
               order.products
                 ?.reduce((sum, item) => sum + item.price * item.quantity, 0)
                 ?.toFixed(3) || 0
-            } KWD`,
-            shipping: `${order.shippingCost?.toFixed(3) || 0} KWD`,
+            } kw`,
+            shipping: `${order.shippingCost?.toFixed(3) || 0} kw`,
+            discount:
+              order.promoDiscount > 0
+                ? `-${(order.subtotal * (order.promoDiscount / 100)).toFixed(
+                    3
+                  )} kw (${order.promoDiscount}%)`
+                : "0 kw",
+            promo_code: order.promoCode || "None",
             customer_name: order.userInfo?.name || "Unknown Customer",
             customer_phone: order.userInfo?.phone || "No phone",
             items_count: order.products?.length || 0,
@@ -71,13 +111,15 @@ function PaymentSuccess() {
                 }`
               : "ASAP",
             items_list: itemsList,
+            special_instructions: order.specialInstructions || "None",
           };
 
           await emailjs.send("service_1ti4s08", "template_489g9rh", emailData);
           setEmailSent(true);
         } catch (err) {
+          // ✅ FIXED: Proper catch clause
           console.error("❌ Owner email failed:", err);
-          setEmailSent(true); // Don't break UI even if email fails
+          setEmailSent(true);
         }
       };
 
@@ -115,6 +157,36 @@ function PaymentSuccess() {
     fetchOrder();
   }, [orderId]);
 
+  // ✅ Navigation handlers - FIXED cleanup
+  const handleBackToHome = () => {
+    // Only clear if not already done (prevents double-clearing)
+    if (!cleanupDone) {
+      clearCart();
+      clearOrder();
+      localStorage.removeItem("checkoutData");
+      localStorage.removeItem("cart");
+      sessionStorage.clear();
+    }
+    localStorage.removeItem("paymentSuccessVisited");
+    navigate("/", { replace: true, state: { fromSuccess: true } });
+  };
+
+  const handleViewOrder = () => {
+    // Only clear if not already done
+    if (!cleanupDone) {
+      clearCart();
+      clearOrder();
+      localStorage.removeItem("checkoutData");
+      localStorage.removeItem("cart");
+      sessionStorage.clear();
+    }
+
+    navigate(`/order/${order._id}`, {
+      replace: true,
+      state: { fromSuccess: true, cleared: true },
+    });
+  };
+
   const displayName = (name) => {
     if (!name) return language === "ar" ? "منتج" : "Product";
     if (typeof name === "string") return name;
@@ -126,23 +198,24 @@ function PaymentSuccess() {
     );
   };
 
-  const handleBackToHome = () => navigate("/");
-  const handleViewOrder = () =>
-    order?._id ? navigate(`/order/${order._id}`) : navigate("/orders");
-
-  // ✅ NEW: Format currency helper
   const formatCurrency = (amount) => {
-    return Number(amount || 0).toFixed(3) + " KWD";
+    return Number(amount || 0).toFixed(3) + " kw";
   };
 
-  // ✅ Calculate revenue breakdown
+  // ✅ FIXED: Calculate with PROMO support
   const subtotal =
+    order?.subtotal ||
     order?.products?.reduce(
       (sum, item) => sum + item.price * (item.quantity || 1),
       0
-    ) || 0;
+    ) ||
+    0;
+  const discountAmount =
+    order?.promoDiscount > 0 ? subtotal * (order.promoDiscount / 100) : 0;
+  const discountedSubtotal =
+    order?.discountedSubtotal || subtotal - discountAmount;
   const shippingCost = order?.shippingCost || 0;
-  const grandTotal = order?.totalAmount || 0;
+  const grandTotal = order?.totalAmount || discountedSubtotal + shippingCost;
 
   const getFullAddress = () => {
     if (!order?.shippingAddress)
@@ -150,7 +223,7 @@ function PaymentSuccess() {
     const addr = order.shippingAddress;
     const parts = [];
     if (addr.city) parts.push(addr.city);
-    if (addr.area) parts.push(addr.area);
+    if (addr.area && addr.area !== "pickup") parts.push(addr.area);
     if (addr.street) parts.push(`St ${addr.street}`);
     if (addr.block) parts.push(`Blck ${addr.block}`);
     if (addr.house) parts.push(`Hse ${addr.house}`);
@@ -192,7 +265,7 @@ function PaymentSuccess() {
     );
   }
 
-  // Error or no order
+  // Error or no order - Show success anyway
   if (error || !order) {
     return (
       <div
@@ -217,7 +290,10 @@ function PaymentSuccess() {
               {language === "ar" ? "العودة للصفحة الرئيسية" : "Back to Home"}
             </button>
             <button
-              onClick={() => navigate("/orders")}
+              onClick={() => {
+                localStorage.setItem("paymentSuccessVisited", "true");
+                navigate("/orders", { replace: true });
+              }}
               className="w-full bg-green-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-green-700 transition-all duration-200"
             >
               {language === "ar" ? "عرض الطلبات" : "View Orders"}
@@ -308,7 +384,7 @@ function PaymentSuccess() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-green-600">
-                    {((item.price || 0) * (item.quantity || 1)).toFixed(3)} KWD
+                    {((item.price || 0) * (item.quantity || 1)).toFixed(3)} kw
                   </p>
                   <p className="text-xs text-gray-500">{item.quantity || 1}x</p>
                 </div>
@@ -317,7 +393,7 @@ function PaymentSuccess() {
           </div>
         </div>
 
-        {/* ✅ Order Information - Enhanced */}
+        {/* Order Information */}
         <div className="space-y-6 mb-8">
           <h2 className="text-lg font-bold text-gray-900 mb-4">
             {language === "ar" ? "معلومات الطلب" : "Order Information"}
@@ -373,16 +449,55 @@ function PaymentSuccess() {
                   : "Home Delivery"}
               </span>
             </div>
+
+            {/* Special Instructions */}
+            {order?.specialInstructions && (
+              <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg">
+                <span className="text-lg mt-1">📝</span>
+                <div className="flex-1">
+                  <span className="font-semibold text-yellow-900">
+                    {language === "ar"
+                      ? "ملاحظات خاصة"
+                      : "Special Instructions"}
+                    :
+                  </span>
+                  <br />
+                  <span className="text-yellow-800">
+                    {order.specialInstructions}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ✅ FIXED: Revenue Breakdown + Grand Total */}
+        {/* Revenue Breakdown + PROMO Support */}
         <div className="pt-6 border-t border-gray-200 mb-8">
           <div className="space-y-3">
             <div className="flex justify-between text-lg text-gray-700 font-semibold">
               <span>{language === "ar" ? "المجموع الفرعي" : "Subtotal"}</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
+
+            {/* PROMO DISCOUNT */}
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-lg font-semibold text-green-600 bg-green-50 p-3 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <FaTag className="text-green-500" />
+                  <span>
+                    {language === "ar" ? "الخصم" : "Discount"}
+                    {order.promoCode && (
+                      <span className="ml-1 bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
+                        {order.promoCode}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <span className="font-black">
+                  -{formatCurrency(discountAmount)}
+                </span>
+              </div>
+            )}
 
             {order.orderType === "delivery" && shippingCost > 0 && (
               <div className="flex justify-between text-lg text-gray-700 font-semibold">

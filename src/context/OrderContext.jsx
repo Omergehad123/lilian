@@ -2,39 +2,33 @@ import React, { createContext, useState, useEffect, useMemo } from "react";
 
 const OrderContext = createContext();
 
-const API_BASE_URL = "https://lilian-backend-7bjc.onrender.com/api"; // Your backend URL
+const API_BASE_URL = "https://lilian-backend-7bjc.onrender.com/api";
 
 export function OrderProvider({ children }) {
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState({});
   const [loadingCities, setLoadingCities] = useState(true);
 
-  // ✅ FIXED: Fetch ONLY ACTIVE cities/areas for customers
+  // ✅ Fetch cities/areas
   useEffect(() => {
     const fetchCities = async () => {
       try {
         setLoadingCities(true);
-        const response = await fetch(`${API_BASE_URL}/city-areas`); // ✅ No auth needed!
-
-        if (!response.ok) {
+        const response = await fetch(`${API_BASE_URL}/city-areas`);
+        if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
-        }
 
         const data = await response.json();
-
         if (data.success) {
-          // ✅ Filter ONLY ACTIVE cities and areas for customers
           const activeCities = data.cities.filter(
             (city) => city.isActive !== false
           );
-
           setCities(activeCities);
 
-          // ✅ Transform for easy lookup - ONLY active areas
           const areasObj = {};
           activeCities.forEach((city) => {
             areasObj[city.key] = city.areas
-              .filter((area) => area.isActive !== false) // ✅ Only active areas
+              .filter((area) => area.isActive !== false)
               .map((area) => ({
                 key: area._id,
                 name: area.name,
@@ -49,13 +43,12 @@ export function OrderProvider({ children }) {
         setLoadingCities(false);
       }
     };
-
     fetchCities();
   }, []);
 
   const cityKeys = useMemo(() => cities.map((city) => city.key), [cities]);
 
-  // ... rest of your existing order state (UNCHANGED - PERFECT!)
+  // ✅ FIXED Order state - Added specialInstructions
   const [order, setOrder] = useState(() => {
     try {
       const savedOrder = localStorage.getItem("order");
@@ -67,7 +60,6 @@ export function OrderProvider({ children }) {
             shippingAddress: {
               city: "",
               area: "",
-              areaId: "", // ✅ This stores the area._id for backend
               street: "",
               block: "",
               house: "",
@@ -76,9 +68,11 @@ export function OrderProvider({ children }) {
               date: new Date().toISOString().split("T")[0],
               timeSlot: "08:00 AM - 01:00 PM",
             },
-            message: "",
+            message: "", // ✅ This becomes specialInstructions
             customerName: "",
             customerPhone: "",
+            promoCode: "",
+            promoDiscount: 0,
           };
     } catch {
       return {
@@ -87,7 +81,6 @@ export function OrderProvider({ children }) {
         shippingAddress: {
           city: "",
           area: "",
-          areaId: "",
           street: "",
           block: "",
           house: "",
@@ -99,6 +92,8 @@ export function OrderProvider({ children }) {
         message: "",
         customerName: "",
         customerPhone: "",
+        promoCode: "",
+        promoDiscount: 0,
       };
     }
   });
@@ -107,54 +102,50 @@ export function OrderProvider({ children }) {
     localStorage.setItem("order", JSON.stringify(order));
   }, [order]);
 
+  // ✅ Order setters
   const setItems = (items) => setOrder((prev) => ({ ...prev, items }));
   const setOrderType = (type) =>
     setOrder((prev) => ({ ...prev, orderType: type }));
-
-  // ✅ IMPROVED: Better address handling with areaId
   const setShippingAddress = (address) =>
     setOrder((prev) => ({
       ...prev,
-      shippingAddress: {
-        ...prev.shippingAddress,
-        ...address,
-        // Auto-set areaId when area changes
-        ...(address.area && {
-          areaId:
-            areas[prev.shippingAddress.city]?.find(
-              (a) => a.name.en === address.area || a.name.ar === address.area
-            )?.key || "",
-        }),
-      },
+      shippingAddress: { ...prev.shippingAddress, ...address },
     }));
-
   const setScheduledSlot = (slot) =>
     setOrder((prev) => ({ ...prev, scheduledSlot: slot }));
   const setCustomerName = (name) =>
     setOrder((prev) => ({ ...prev, customerName: name }));
   const setCustomerPhone = (phone) =>
     setOrder((prev) => ({ ...prev, customerPhone: phone }));
-  const setMessage = (msg) => setOrder((prev) => ({ ...prev, message: msg }));
+
+  // ✅ FIXED: Special instructions setter (maps to message)
+  const setSpecialInstructions = (instructions) =>
+    setOrder((prev) => ({ ...prev, message: instructions }));
+
+  // Keep old message setter for backward compatibility
+  const setMessage = (msg) => setSpecialInstructions(msg);
+
+  // ✅ Promo setters
+  const setPromoCode = (code) =>
+    setOrder((prev) => ({ ...prev, promoCode: code }));
+  const setPromoDiscount = (discount) =>
+    setOrder((prev) => ({ ...prev, promoDiscount: discount }));
 
   const clearOrder = () =>
     setOrder({
       items: [],
       orderType: "pickup",
-      shippingAddress: {
-        city: "",
-        area: "",
-        areaId: "",
-        street: "",
-        block: "",
-        house: "",
-      },
+      shippingAddress: { city: "", area: "", street: "", block: "", house: "" },
       scheduledSlot: null,
       message: "",
       customerName: "",
       customerPhone: "",
+      promoCode: "",
+      promoDiscount: 0,
     });
 
-  const totalAmount = useMemo(
+  // ✅ Totals مع الـ Promo
+  const subtotal = useMemo(
     () =>
       order.items.reduce(
         (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
@@ -163,40 +154,92 @@ export function OrderProvider({ children }) {
     [order.items]
   );
 
-  // ✅ IMPROVED: Calculate shipping cost
-  const getShippingCost = useMemo(() => {
+  const discountedSubtotal = useMemo(
+    () => subtotal * (1 - order.promoDiscount / 100),
+    [subtotal, order.promoDiscount]
+  );
+
+  const shippingCost = useMemo(() => {
+    if (order.orderType === "pickup") return 0;
     const areaId = order.shippingAddress.areaId;
     const cityKey = order.shippingAddress.city;
     const area = areas[cityKey]?.find((a) => a.key === areaId);
     return area ? area.shippingPrice : 0;
-  }, [order.shippingAddress.areaId, order.shippingAddress.city, areas]);
+  }, [order.orderType, order.shippingAddress, areas]);
 
-  const getOrderPayload = () => {
-    return {
-      products: order.items.map((item) => ({
-        product: item._id,
-        quantity: item.quantity,
-        price: item.price,
-        message: item.message || order.message || "",
-      })),
-      totalAmount,
-      orderType: order.orderType,
-      scheduleTime: order.scheduledSlot
-        ? {
-            date: order.scheduledSlot.date,
-            timeSlot: order.scheduledSlot.timeSlot,
-          }
-        : null,
-      shippingAddress: {
-        ...order.shippingAddress,
-        areaId: order.shippingAddress.areaId, // ✅ Backend needs this!
-      },
-      userInfo: {
-        name: order.customerName,
-        phone: order.customerPhone,
-      },
-    };
+  const grandTotal = useMemo(
+    () => discountedSubtotal + shippingCost,
+    [discountedSubtotal, shippingCost]
+  );
+
+  const validatePromoCode = async (code) => {
+    if (!code.trim()) {
+      setPromoCode("");
+      setPromoDiscount(0);
+      return { valid: false, discount: 0 };
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE_URL}/promos/validate`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ code: code.trim().toUpperCase() }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.promo) {
+        setPromoCode(data.promo.code);
+        setPromoDiscount(data.promo.discountPercent);
+        return { valid: true, discount: data.promo.discountPercent };
+      } else {
+        setPromoCode("");
+        setPromoDiscount(0);
+        return { valid: false, message: data.message || "Invalid promo code" };
+      }
+    } catch (error) {
+      setPromoCode("");
+      setPromoDiscount(0);
+      return { valid: false, message: "Validation error" };
+    }
   };
+
+  // ✅ FIXED: getOrderPayload - NOW INCLUDES specialInstructions!
+  const getOrderPayload = () => ({
+    products: order.items.map((item) => ({
+      product: item._id,
+      quantity: item.quantity,
+      price: item.price,
+      message: item.message || order.message || "", // per-product message
+    })),
+    totalAmount: grandTotal,
+    orderType: order.orderType,
+    promoCode: order.promoCode || null,
+    promoDiscount: order.promoDiscount || 0,
+    subtotal,
+    discountedSubtotal,
+    shippingCost,
+    scheduleTime: order.scheduledSlot
+      ? {
+          date: order.scheduledSlot.date,
+          timeSlot: order.scheduledSlot.timeSlot,
+        }
+      : null,
+    shippingAddress: {
+      ...order.shippingAddress,
+    },
+    userInfo: {
+      name: order.customerName,
+      phone: order.customerPhone,
+    },
+    // ✅ FIXED: This was MISSING!
+    specialInstructions: order.message || null,
+  });
 
   const [paymentMethod, setPaymentMethod] = useState(() => {
     try {
@@ -210,10 +253,14 @@ export function OrderProvider({ children }) {
     localStorage.setItem("paymentMethod", paymentMethod);
   }, [paymentMethod]);
 
-  // ✅ NEW HELPER FUNCTIONS for easy use in components
+  // ✅ Helpers
   const getAreasForCity = (cityKey) => areas[cityKey] || [];
   const getAreaById = (cityKey, areaId) =>
     areas[cityKey]?.find((area) => area.key === areaId);
+  const isPromoValid = useMemo(
+    () => order.promoCode && order.promoDiscount > 0,
+    [order]
+  );
 
   const value = {
     order,
@@ -221,20 +268,27 @@ export function OrderProvider({ children }) {
     setOrderType,
     setShippingAddress,
     setScheduledSlot,
-    setMessage,
+    setSpecialInstructions, // ✅ NEW: Direct setter
+    setMessage, // ✅ Keep for backward compatibility
     setCustomerName,
     setCustomerPhone,
+    setPromoCode,
+    setPromoDiscount,
     clearOrder,
-    totalAmount,
-    getShippingCost, // ✅ NEW: Easy shipping cost access
-    getOrderPayload,
+    totalAmount: grandTotal,
+    subtotal,
+    discountedSubtotal,
+    shippingCost,
+    getShippingCost: shippingCost,
+    getOrderPayload, // ✅ NOW PERFECTLY includes specialInstructions
     cities,
     areas,
     cityKeys,
     loadingCities,
     paymentMethod,
     setPaymentMethod,
-    // ✅ NEW HELPERS
+    validatePromoCode,
+    isPromoValid,
     getAreasForCity,
     getAreaById,
   };

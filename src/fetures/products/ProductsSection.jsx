@@ -14,10 +14,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 function ProductsSection() {
   const [openCategory, setOpenCategory] = useState(null);
-
-  // New: Use an object to track which accordions are open (by category key)
   const [openAccordions, setOpenAccordions] = useState({});
-  
   const [productMessages, setProductMessages] = useState({});
   const [t, setT] = useState({});
 
@@ -51,8 +48,14 @@ function ProductsSection() {
     [language]
   );
 
+  // 🔥 UPDATED: Filter ONLY available products for customers
   const filteredProducts = useMemo(() => {
-    let result = Array.isArray(products) ? [...products] : [];
+    // First filter: Only show available products to customers
+    let result = Array.isArray(products)
+      ? products.filter(
+          (product) => product.isAvailable !== false // Show only available products
+        )
+      : [];
 
     // 1. Category filter
     if (filters?.category) {
@@ -105,6 +108,7 @@ function ProductsSection() {
     return result;
   }, [products, filters, displayLang]);
 
+  // 🔥 UPDATED: Use filteredProducts (only available ones) for categorization
   const productsByCategory = useMemo(() => {
     const map = {};
     filteredProducts.forEach((product) => {
@@ -134,7 +138,6 @@ function ProductsSection() {
     }));
   }, []);
 
-  // Updated: Show a toast when item is added to cart
   const handleAddToCart = useCallback(
     (product) => {
       const productId = product._id || product.id || product.slug;
@@ -148,9 +151,11 @@ function ProductsSection() {
         message: currentMessage,
       });
 
-      // Show react-toastify notification here
       toast.success(
-        `${displayLang(product.name)} ${getTranslation("addedToCart", "added to cart!")}`,
+        `${displayLang(product.name)} ${getTranslation(
+          "addedToCart",
+          "added to cart!"
+        )}`,
         {
           position: language === "ar" ? "top-left" : "top-right",
           autoClose: 2200,
@@ -166,7 +171,6 @@ function ProductsSection() {
     [addToCart, productMessages, displayLang, getTranslation, language]
   );
 
-  // "Buy Now" handler: adds to cart and navigates to /cart
   const handleBuyNow = useCallback(
     (product) => {
       const productId = product._id || product.id || product.slug;
@@ -180,9 +184,11 @@ function ProductsSection() {
         message: currentMessage,
       });
 
-      // Optional: Show a notification for buy now (you can remove if unneeded)
       toast.success(
-        `${displayLang(product.name)} ${getTranslation("addedToCart", "added to cart!")} ${getTranslation("goToCart", "Redirecting to cart...")}`,
+        `${displayLang(product.name)} ${getTranslation(
+          "addedToCart",
+          "added to cart!"
+        )} ${getTranslation("goToCart", "Redirecting to cart...")}`,
         {
           position: language === "ar" ? "top-left" : "top-right",
           autoClose: 1200,
@@ -197,23 +203,27 @@ function ProductsSection() {
 
       setTimeout(() => {
         navigate("/cart");
-      }, 1200); // Wait for toast or can be 0 to be instant
+      }, 1200);
     },
-    [addToCart, productMessages, displayLang, getTranslation, language, navigate]
+    [
+      addToCart,
+      productMessages,
+      displayLang,
+      getTranslation,
+      language,
+      navigate,
+    ]
   );
 
   // --- open all accordions if "all" is selected ---
   useEffect(() => {
-    // Only open all visible categories if openCategory is "all"
     if (openCategory === "all" || openCategory === null) {
-      // Open all visible categories
       const newOpenAccordions = {};
       visibleCategories.forEach(({ key }) => {
         newOpenAccordions[key] = true;
       });
       setOpenAccordions(newOpenAccordions);
     } else {
-      // Only open the selected
       setOpenAccordions({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -293,7 +303,7 @@ function ProductsSection() {
     );
   }
 
-  // MAIN CONTENT (unchanged except for ToastContainer)
+  // MAIN CONTENT
   return (
     <div className="w-full flex flex-col items-center px-2" dir={dir}>
       {/* Toast Notification Container */}
@@ -313,7 +323,7 @@ function ProductsSection() {
           )}
           {filters?.price && filters.price < 150 && (
             <span className="ml-2 px-2 py-1 bg-blue-200 rounded text-xs">
-              ≤ {filters.price} KWD
+              ≤ {filters.price} KW
             </span>
           )}
           {filters?.sort?.type && (
@@ -380,10 +390,10 @@ function ProductsSection() {
       {/* Products Grid */}
       <div className="w-full max-w-3xl my-10 space-y-4">
         {visibleCategories.map(({ key, label }) => {
-          // If openCategory is all/null => all categories open
-          const isOpen = (openCategory === "all" || openCategory === null)
-            ? !!openAccordions[key]
-            : !!openAccordions[key];
+          const isOpen =
+            openCategory === "all" || openCategory === null
+              ? !!openAccordions[key]
+              : !!openAccordions[key];
 
           const productsForCat =
             key === "all" ? filteredProducts : productsByCategory[key] || [];
@@ -399,8 +409,7 @@ function ProductsSection() {
               <div
                 className="flex justify-center items-center gap-2 p-3 cursor-pointer bg-[#eee] hover:bg-gray-100 transition-colors"
                 onClick={() => {
-                  setOpenAccordions(prev => {
-                    // Toggle current accordion
+                  setOpenAccordions((prev) => {
                     const next = { ...prev, [key]: !prev[key] };
                     return next;
                   });
@@ -463,15 +472,15 @@ function ProductsSection() {
                             product.price !== product.actualPrice ? (
                               <>
                                 <span className="line-through mr-2 text-xs">
-                                  {product.price},000 kwd
+                                  {product.price},000 kw
                                 </span>
                                 <span className="font-semibold text-lg text-green-600">
-                                  {product.actualPrice},000 kwd
+                                  {product.actualPrice},000 kw
                                 </span>
                               </>
                             ) : (
                               <span className="font-semibold text-lg">
-                                {product.actualPrice},000 kwd
+                                {product.actualPrice},000 kw
                               </span>
                             )}
                           </p>

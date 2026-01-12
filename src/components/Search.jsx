@@ -117,9 +117,9 @@ function Search() {
 
                               <span className="text-gray-500 text-sm mb-2 uppercase font-semibold">
                                 {item.price !== undefined
-                                  ? `${item.price} kwd`
+                                  ? `${item.price} kw`
                                   : item.actualPrice !== undefined
-                                  ? `${item.actualPrice} kwd`
+                                  ? `${item.actualPrice} kw`
                                   : language === "en"
                                   ? "No price"
                                   : "لا يوجد سعر"}

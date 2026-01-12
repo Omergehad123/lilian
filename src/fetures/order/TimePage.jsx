@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FaArrowLeft, FaArrowRight, FaCheck } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useOrder } from "../../hooks/useOrder";
 import { useLanguage } from "../../hooks/useLanguage";
 import translations from "../../utils/translations";
@@ -15,6 +15,7 @@ function getTodayDateString() {
 
 function TimePage() {
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ NEW: Track previous page
   const { order, setScheduledSlot } = useOrder();
   const { language, changeLanguage } = useLanguage();
   const [t, setT] = useState({});
@@ -34,7 +35,10 @@ function TimePage() {
 
   const today = new Date();
 
-  // ✅ FIX: Initialize from context properly
+  // ✅ NEW: Store previous page from location state
+  const previousPage = location.state?.from || "/";
+
+  // ✅ Initialize from context properly
   const initialSlot = order?.scheduledSlot || {};
   const [selectedDate, setSelectedDate] = useState(
     initialSlot.date || getTodayDateString()
@@ -99,7 +103,7 @@ function TimePage() {
     return { start, end };
   };
 
-  // ✅ FIX: Save to context immediately when time is selected
+  // ✅ FIXED: Save to context immediately when time is selected
   const handleTimeSelect = (slot) => {
     const { start, end } = parseTimeSlot(slot);
     setSelectedStartTime(start);
@@ -159,7 +163,7 @@ function TimePage() {
 
   const handleBack = () => navigate(-1);
 
-  // ✅ FIX: Final save with complete validation
+  // ✅ FIXED: Navigate back to PREVIOUS PAGE (Checkout/OrderMode)
   const handleSave = () => {
     const finalSlot = {
       date: selectedDate,
@@ -169,7 +173,17 @@ function TimePage() {
     };
 
     setScheduledSlot(finalSlot);
-    navigate("/", { replace: true });
+
+    // ✅ GO BACK TO THE PAGE THEY CAME FROM
+    if (previousPage && previousPage !== location.pathname) {
+      navigate(previousPage, {
+        replace: true,
+        state: { fromTimePage: true },
+      });
+    } else {
+      // Fallback: go to Checkout
+      navigate("/checkout", { replace: true });
+    }
   };
 
   return (

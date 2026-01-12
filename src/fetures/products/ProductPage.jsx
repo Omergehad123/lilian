@@ -219,7 +219,7 @@ function ProductPage() {
           {/* Price */}
           <div className="flex items-center justify-between mb-4">
             <span className="font-semibold text-black/60">{priceLabel}</span>
-            <span>{(price * (quantity || 1)).toFixed(3)} KWD</span>
+            <span>{(price * (quantity || 1)).toFixed(3)} kw</span>
           </div>
 
           {/* Message input */}
@@ -276,7 +276,7 @@ function ProductPage() {
                 onClick={handleAddToCart}
                 type="button"
               >
-                {addToCartLabel} {price.toFixed(3)} KWD
+                {addToCartLabel} {price.toFixed(3)} kw
               </button>
             )}
             {cartItem && (
@@ -293,7 +293,7 @@ function ProductPage() {
           {/* Cart total */}
           <div className="mt-4 text-right text-sm text-gray-600">
             <span className="font-semibold">{cartTotalLabel} </span>
-            {cartTotal.toFixed(3)} KWD
+            {cartTotal.toFixed(3)} kw
           </div>
         </div>
       </div>
