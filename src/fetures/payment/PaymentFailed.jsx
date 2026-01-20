@@ -6,7 +6,7 @@ function PaymentFailed() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [errorReason, setErrorReason] = useState("Unknown error");
-  
+
   useEffect(() => {
     const currentUrl = window.location.href;
     if (currentUrl.includes('//payment-failed')) {
@@ -14,6 +14,7 @@ function PaymentFailed() {
       window.history.replaceState({}, document.title, cleanUrl);
     }
   }, []);
+
 
   useEffect(() => {
     const paymentId = searchParams.get("paymentId") || searchParams.get("Id");

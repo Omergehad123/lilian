@@ -104,14 +104,14 @@ function PaymentSuccess() {
     }
   }, [order]);
 
-  // Cleanup URL double slashes
   useEffect(() => {
     const currentUrl = window.location.href;
     if (currentUrl.includes('//payment-success')) {
       const cleanUrl = currentUrl.replace(/\/\//g, '/');
       window.history.replaceState({}, document.title, cleanUrl);
     }
-  }, []);
+  }, []); // Empty deps = runs ONCE on mount
+
 
   // 🔥 LocalStorage fallback + Polling
   useEffect(() => {
@@ -163,7 +163,7 @@ function PaymentSuccess() {
         setError(null);
 
         const res = await axios.get(
-          `https://lilian-backend-7bjc.onrender.com/api/orders/${idToUse}`,
+          `https://lilian-backend.onrender.com/api/orders/${idToUse}`,
           { withCredentials: true }
         );
 

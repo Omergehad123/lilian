@@ -26,6 +26,8 @@ function ReviewOrder() {
     setPaymentMethod,
     getOrderPayload,
     loadingCities,
+    syncedOrderId,
+    isGuest,
   } = useOrder();
 
   const { cart } = useCart();
@@ -232,49 +234,22 @@ function ReviewOrder() {
     if (loading || safeGrandTotal === 0 || !isValidOrder) return;
 
     setLoading(true);
-    let savedOrderId = null;
 
     try {
-      // 🔥 STEP 1: SAVE ORDER TO DATABASE FIRST
-      console.log("💾 Saving order before payment...");
+      // 🔥 ORDER ALREADY SAVED BY OrderContext - Just use syncedOrderId
+      const dbOrderId = syncedOrderId || order._id;
+
+      if (!dbOrderId) {
+        throw new Error("No saved order. Please try again.");
+      }
+
+      console.log("✅ Using existing DB order:", dbOrderId, isGuest ? "(Guest)" : "(Logged in)");
 
       const cleanPhone = (order.customerPhone || "+96566123456")
         .replace(/\D/g, "")
         .slice(0, 10);
 
-      const orderPayload = {
-        ...getOrderPayload(),
-        customerEmail: order.customerEmail || "customer@lilian.com",
-        customerPhone: cleanPhone,
-        paymentMethod: method,
-      };
-
-      console.log("📦 Saving order payload:", orderPayload);
-
-      // Save order to backend
-      const saveOrderResponse = await fetch(
-        "https://lilian-backend-7bjc.onrender.com/api/orders",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` })
-          },
-          body: JSON.stringify(orderPayload),
-        }
-      );
-
-      const saveOrderData = await saveOrderResponse.json();
-
-      if (!saveOrderResponse.ok || !saveOrderData.success) {
-        throw new Error(saveOrderData.message || "Failed to save order");
-      }
-
-      // 🔥 GET ORDER ID
-      savedOrderId = saveOrderData.orderId;
-      console.log("✅ Order saved! ID:", savedOrderId);
-
-      // 🔥 STEP 2: CREATE PAYMENT WITH ORDER ID
+      // 🔥 STEP 1: CREATE PAYMENT (No order save needed!)
       const paymentData = {
         amount: safeGrandTotal.toFixed(3),
         customerName: (order.customerName || "Guest Customer").trim(),
@@ -282,14 +257,14 @@ function ReviewOrder() {
         phone: cleanPhone,
         paymentMethod: method,
         userId: user?._id || "guest",
-        promoCode: localPromoCode,
-        promoDiscount: activePromoDiscount,
-        orderId: savedOrderId,  // ✅ Send order ID to payment
+        orderId: dbOrderId,        // 🔥 Already in DB!
         orderData: getOrderPayload(),
       };
 
+      console.log("💳 Creating payment for order:", dbOrderId);
+
       const response = await fetch(
-        "https://lilian-backend-7bjc.onrender.com/api/payment/myfatoorah",
+        "https://lilian-backend.onrender.com/api/payment/myfatoorah",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -307,8 +282,8 @@ function ReviewOrder() {
       const data = JSON.parse(rawResponse);
 
       if (data.isSuccess) {
-        // 🔥 Save order ID for success page
-        localStorage.setItem("paymentOrderId", savedOrderId);
+        // 🔥 Save for success page fallback
+        localStorage.setItem("paymentOrderId", dbOrderId);
         localStorage.setItem("paymentUrl", data.paymentUrl);
 
         // Redirect to MyFatoorah
@@ -320,27 +295,14 @@ function ReviewOrder() {
     } catch (error) {
       console.error("❌ Payment flow error:", error);
       alert(`Payment failed: ${error.message}`);
-
-      // 🔥 Cleanup failed order (optional)
-      if (savedOrderId) {
-        try {
-          await fetch(`https://lilian-backend-7bjc.onrender.com/api/orders/${savedOrderId}`, {
-            method: "DELETE",
-            headers: { ...(token && { Authorization: `Bearer ${token}` }) }
-          });
-          console.log("🧹 Failed order cleaned up");
-        } catch (cleanupError) {
-          console.error("Cleanup failed:", cleanupError);
-        }
-      }
     } finally {
       setLoading(false);
     }
   }, [
-    safeGrandTotal, order?.customerPhone, order?.customerName,
-    order?.customerEmail, user?._id, getOrderPayload,
-    loading, isValidOrder, localPromoCode, activePromoDiscount, token
+    safeGrandTotal, order, user?._id, getOrderPayload,
+    loading, isValidOrder, syncedOrderId, isGuest  // 🔥 Updated deps
   ]);
+
 
 
   useEffect(() => {
