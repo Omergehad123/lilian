@@ -1,0 +1,3 @@
+# Serve React app for ALL routes (fixes 404)
+# This is REQUIRED for Render/Vite SPAs
+/*    /index.html   200   !File

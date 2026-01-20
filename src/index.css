@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+}
+
+@custom-variant hover (&:hover);
+
+:root {
+  --main-color: #032117;
+  --second-color: #666d7d;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  height: 0;
+  display: none;
+}
+
+[dir="rtl"] .text-start {
+  text-align: right;
+}
+[dir="ltr"] .text-start {
+  text-align: left;
+}
+
+[dir="rtl"] .flex-row-dir {
+  flex-direction: row-reverse;
+}
+[dir="ltr"] .flex-row-dir {
+  flex-direction: row;
+}
+
+@media (max-width: 768px) {
+}
