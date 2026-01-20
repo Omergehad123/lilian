@@ -1,4 +1,3 @@
-// ✅ PaymentSuccess.jsx - COMPLETE with PDF Download + Polling + WhatsApp
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -34,7 +33,6 @@ function PaymentSuccess() {
   const [error, setError] = useState(null);
   const [emailSent, setEmailSent] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
-  const [visitedOtherPage, setVisitedOtherPage] = useState(false);
   const [cleanupDone, setCleanupDone] = useState(false);
   const hasSentEmail = useRef(false);
   const pdfContentRef = useRef(null);
@@ -104,38 +102,29 @@ function PaymentSuccess() {
     }
   }, [order]);
 
+  // Fix duplicate // in URL
   useEffect(() => {
     const currentUrl = window.location.href;
-    if (currentUrl.includes('//payment-success')) {
-      const cleanUrl = currentUrl.replace(/\/\//g, '/');
+    if (currentUrl.includes('/payment-success?')) {
+      const cleanUrl = currentUrl.replace(/\/{2,}/g, '/');
       window.history.replaceState({}, document.title, cleanUrl);
     }
-  }, []); // Empty deps = runs ONCE on mount
 
+  }, []);
 
-  // 🔥 LocalStorage fallback + Polling
+  // localStorage fallback
   useEffect(() => {
-    const storedOrderId = localStorage.getItem("paymentOrderId");
-    if (storedOrderId && !orderId) {
-      window.history.replaceState({}, '', `/payment-success?orderId=${storedOrderId}`);
-    }
-  }, [orderId]);
+    if (orderId) localStorage.setItem("paymentOrderId", orderId);
+    if (paymentId) localStorage.setItem("paymentOrderId", paymentId);
+  }, [orderId, paymentId]);
 
-  // Navigation cleanup
+
+  // cleanup
   useEffect(() => {
     const isFreshCashOrder = location.state?.justCreated && orderId;
-    const hasLeftSuccessPage = localStorage.getItem("paymentSuccessVisited");
-
-    if (hasLeftSuccessPage === "true" && orderId) {
-      setVisitedOtherPage(true);
-      localStorage.removeItem("paymentSuccessVisited");
-      navigate("/", { replace: true });
-      return;
-    }
 
     if (isFreshCashOrder && !cleanupDone) {
       const cleanupTimer = setTimeout(() => {
-        console.log("✅ Clearing cart & order contexts");
         clearCart();
         clearOrder();
         localStorage.removeItem("checkoutData");
@@ -145,40 +134,52 @@ function PaymentSuccess() {
 
       return () => clearTimeout(cleanupTimer);
     }
-  }, [location.state, orderId, navigate, clearCart, clearOrder, cleanupDone]);
+  }, [location.state, orderId, clearCart, clearOrder, cleanupDone]);
 
-  // 🔥 Enhanced Order Fetching with Polling
+  // 🔥 Correct Polling
   useEffect(() => {
-    let pollInterval;
+    const idToUse = orderId || paymentId || localStorage.getItem("paymentOrderId");
+    if (!idToUse) {
+      setError("Missing orderId or paymentId");
+      setLoading(false);
+      return;
+    }
+
+    localStorage.setItem("paymentOrderId", idToUse);
 
     const fetchOrder = async () => {
-      const idToUse = orderId || localStorage.getItem("paymentOrderId");
-      if (!idToUse) {
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         setError(null);
 
-        const res = await axios.get(
-          `https://lilian-backend.onrender.com/api/orders/${idToUse}`,
-          { withCredentials: true }
-        );
+        let res;
+
+        // if it looks like a Mongo ObjectId
+        if (idToUse.length === 24) {
+          res = await axios.get(
+            `https://lilian-backend.onrender.com/api/orders/${idToUse}`,
+            { withCredentials: true }
+          );
+        } else {
+          res = await axios
+            .get(`https://lilian-backend.onrender.com/api/orders/by-payment/${idToUse}`, {
+              withCredentials: true,
+            })
+            .catch(async () => {
+              return await axios.get(
+                `https://lilian-backend.onrender.com/api/orders/by-invoice/${idToUse}`,
+                { withCredentials: true }
+              );
+            });
+        }
 
         const orderData = res.data.data || res.data;
 
         if (orderData.isPaid) {
           setOrder(orderData);
           localStorage.removeItem("paymentOrderId");
-          if (pollInterval) clearInterval(pollInterval);
-        } else {
-          // Poll every 3 seconds until paid
-          pollInterval = setInterval(fetchOrder, 3000);
         }
       } catch (err) {
-        console.error("Fetch failed:", err);
         setError("Failed to load order details");
       } finally {
         setLoading(false);
@@ -186,11 +187,11 @@ function PaymentSuccess() {
     };
 
     fetchOrder();
+    const interval = setInterval(fetchOrder, 3000);
 
-    return () => {
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  }, [orderId]);
+    return () => clearInterval(interval);
+  }, [orderId, paymentId]);
+
 
   // Email notification
   useEffect(() => {
@@ -244,7 +245,6 @@ function PaymentSuccess() {
           await emailjs.send("service_1ti4s08", "template_489g9rh", emailData);
           setEmailSent(true);
         } catch (err) {
-          console.error("Owner email failed:", err);
           setEmailSent(true);
         }
       };

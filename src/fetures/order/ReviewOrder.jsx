@@ -26,8 +26,6 @@ function ReviewOrder() {
     setPaymentMethod,
     getOrderPayload,
     loadingCities,
-    syncedOrderId,
-    isGuest,
   } = useOrder();
 
   const { cart } = useCart();
@@ -112,9 +110,6 @@ function ReviewOrder() {
   const safeDiscountedSubtotal = safeSubtotal - discountAmount;
   const safeShippingCost = toNumber(shippingCost);
   const safeGrandTotal = safeDiscountedSubtotal + safeShippingCost;
-
-  // 🔥 DEBUG INFO
-  // REMOVED: console.log("🔥 REVIEWORDER DEBUG:", { ... })
 
   const orderType = order?.orderType || "pickup";
   const isValidOrder =
@@ -230,26 +225,51 @@ function ReviewOrder() {
     setPromoDiscount,
   ]);
 
+  // 🔥 IMPORTANT FIX: SAVE ORDER BEFORE PAYMENT
   const handlePaymentMethodSelect = useCallback(async (method) => {
     if (loading || safeGrandTotal === 0 || !isValidOrder) return;
 
     setLoading(true);
+    let savedOrderId = null;
 
     try {
-      // 🔥 ORDER ALREADY SAVED BY OrderContext - Just use syncedOrderId
-      const dbOrderId = syncedOrderId || order._id;
-
-      if (!dbOrderId) {
-        throw new Error("No saved order. Please try again.");
-      }
-
-      console.log("✅ Using existing DB order:", dbOrderId, isGuest ? "(Guest)" : "(Logged in)");
-
-      const cleanPhone = (order.customerPhone || "+96566123456")
+      // 🔥 STEP 1: SAVE ORDER TO DATABASE FIRST
+      const cleanPhone = (order.customerPhone || "")
         .replace(/\D/g, "")
         .slice(0, 10);
 
-      // 🔥 STEP 1: CREATE PAYMENT (No order save needed!)
+      const orderPayload = {
+        ...getOrderPayload(),
+        customerEmail: order.customerEmail || "customer@lilian.com",
+        customerPhone: cleanPhone,
+        paymentMethod: method,
+        promoCode: localPromoCode,
+        promoDiscount: activePromoDiscount,
+      };
+
+      const saveOrderResponse = await fetch(
+        "https://lilian-backend.onrender.com/api/orders",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(user?._id && !user?.isGuest && token && {
+              Authorization: `Bearer ${token}`
+            })
+          },
+          body: JSON.stringify(orderPayload),
+        }
+      );
+
+      if (!saveOrderResponse.ok) {
+        const errorText = await saveOrderResponse.text();
+        throw new Error(errorText || "Failed to save order");
+      }
+
+      const saveOrderData = await saveOrderResponse.json();
+      savedOrderId = saveOrderData.orderId || saveOrderData._id || saveOrderData.data?.orderId;
+
+      // 🔥 STEP 2: CREATE PAYMENT WITH ORDER ID
       const paymentData = {
         amount: safeGrandTotal.toFixed(3),
         customerName: (order.customerName || "Guest Customer").trim(),
@@ -257,11 +277,11 @@ function ReviewOrder() {
         phone: cleanPhone,
         paymentMethod: method,
         userId: user?._id || "guest",
-        orderId: dbOrderId,        // 🔥 Already in DB!
+        promoCode: localPromoCode,
+        promoDiscount: activePromoDiscount,
+        orderId: savedOrderId,
         orderData: getOrderPayload(),
       };
-
-      console.log("💳 Creating payment for order:", dbOrderId);
 
       const response = await fetch(
         "https://lilian-backend.onrender.com/api/payment/myfatoorah",
@@ -282,28 +302,39 @@ function ReviewOrder() {
       const data = JSON.parse(rawResponse);
 
       if (data.isSuccess) {
-        // 🔥 Save for success page fallback
-        localStorage.setItem("paymentOrderId", dbOrderId);
+        // ✅ PAYMENT SUCCESS - Save for success page
+        localStorage.setItem("paymentOrderId", savedOrderId);
         localStorage.setItem("paymentUrl", data.paymentUrl);
+        localStorage.setItem("paymentMethod", method);
 
         // Redirect to MyFatoorah
         window.location.href = data.paymentUrl;
+        return;
       } else {
         throw new Error(data.message || "Payment initiation failed");
       }
 
     } catch (error) {
       console.error("❌ Payment flow error:", error);
-      alert(`Payment failed: ${error.message}`);
+
+      // 🔥 CLEANUP: Delete failed order
+      if (savedOrderId) {
+        await fetch(`https://lilian-backend.onrender.com/api/orders/${savedOrderId}`, {
+          method: "DELETE",
+          headers: {
+            ...(token && user?._id && !user.isGuest && { Authorization: `Bearer ${token}` })
+          }
+        });
+      }
+
+      alert(language === "ar" ? "فشل الدفع. حاول مرة أخرى." : "Payment failed. Please try again.");
     } finally {
       setLoading(false);
     }
   }, [
-    safeGrandTotal, order, user?._id, getOrderPayload,
-    loading, isValidOrder, syncedOrderId, isGuest  // 🔥 Updated deps
+    loading, safeGrandTotal, isValidOrder, token, user, getOrderPayload, order,
+    localPromoCode, activePromoDiscount
   ]);
-
-
 
   useEffect(() => {
     if (order?.message) {

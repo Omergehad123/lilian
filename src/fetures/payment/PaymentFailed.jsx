@@ -7,17 +7,20 @@ function PaymentFailed() {
   const navigate = useNavigate();
   const [errorReason, setErrorReason] = useState("Unknown error");
 
+  // Clean URL (remove duplicate slashes)
   useEffect(() => {
     const currentUrl = window.location.href;
-    if (currentUrl.includes('//payment-failed')) {
-      const cleanUrl = currentUrl.replace(/\/\//g, '/');
+    if (currentUrl.includes("//payment-failed")) {
+      const cleanUrl = currentUrl.replace(/\/\//g, "/");
       window.history.replaceState({}, document.title, cleanUrl);
     }
   }, []);
 
-
+  // Read query params once
   useEffect(() => {
     const paymentId = searchParams.get("paymentId") || searchParams.get("Id");
+    const orderId = searchParams.get("orderId");
+    const invoiceId = searchParams.get("invoiceId");
     const error = searchParams.get("error");
 
     if (error) {
@@ -29,9 +32,13 @@ function PaymentFailed() {
       setErrorReason(messages[error] || error);
     }
 
-    console.log("Payment failed details:", { paymentId, error });
+    console.log("Payment failed details:", {
+      orderId,
+      paymentId,
+      invoiceId,
+      error,
+    });
   }, [searchParams]);
-
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-pink-50 py-12 px-4">
@@ -52,6 +59,12 @@ function PaymentFailed() {
           <p className="text-sm text-red-700 bg-white px-3 py-1 rounded-lg font-mono">
             {searchParams.get("paymentId") || searchParams.get("Id") || "N/A"}
           </p>
+
+          <p className="text-red-800 font-semibold mt-4 mb-2">Order ID:</p>
+          <p className="text-sm text-red-700 bg-white px-3 py-1 rounded-lg font-mono">
+            {searchParams.get("orderId") || "N/A"}
+          </p>
+
           {errorReason !== "Unknown error" && (
             <>
               <p className="text-red-800 font-semibold mt-4 mb-2">Reason:</p>
