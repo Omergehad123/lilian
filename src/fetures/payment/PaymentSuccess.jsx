@@ -51,56 +51,36 @@ function PaymentSuccess() {
 
   // 🔥 PDF GENERATION FUNCTION
   const generatePDF = useCallback(async () => {
-    if (!order || !pdfContentRef.current) return;
+    if (!order || !pdfContentRef.current) {
+      alert("PDF content not ready");
+      return;
+    }
 
     setPdfGenerating(true);
+
     try {
-      const element = pdfContentRef.current;
-      const canvas = await html2canvas(element, {
+      const canvas = await html2canvas(pdfContentRef.current, {
         scale: 2,
         useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight,
+        backgroundColor: "#ffffff",
       });
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
+      const imgData = canvas.toDataURL("image/png");
 
-      let position = 10;
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = 210;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      // Title page
-      pdf.setFontSize(24);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("ORDER RECEIPT", 105, 25, { align: "center" });
-      pdf.setFontSize(14);
-      pdf.text(`Order #${order._id.slice(-6).toUpperCase()}`, 105, 40, { align: "center" });
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, 105, 50, { align: "center" });
-
-      // Add main content
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight + 10;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`order-${order._id.slice(-6).toUpperCase()}-receipt.pdf`);
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Failed to generate PDF. Please try again.");
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`order-${order._id.slice(-6).toUpperCase()}.pdf`);
+    } catch (err) {
+      console.error("PDF Error:", err);
+      alert("PDF generation failed");
     } finally {
       setPdfGenerating(false);
     }
   }, [order]);
+
 
   // Fix duplicate // in URL
   useEffect(() => {
@@ -384,7 +364,7 @@ function PaymentSuccess() {
         <div className="w-10" />
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl flex flex-col" ref={pdfContentRef}>
+      <div ref={pdfContentRef} className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl">
         {/* Success Header */}
         <div className="text-center mb-8 relative">
           <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
