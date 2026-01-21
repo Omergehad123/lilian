@@ -30,28 +30,31 @@ function Orders() {
       try {
         setLoading(true);
         setError(null);
+
         const res = await axios.get(
           "https://lilian-backend.onrender.com/api/orders",
           { withCredentials: true }
         );
-        setOrders(res.data.data || []);
+
+        setOrders(res.data.data || []); // <-- orders array
       } catch (err) {
-        console.error(
-          "❌ Orders fetch error:",
-          err.response?.data || err.message
-        );
+        console.error("❌ Orders fetch error:", err.response?.data || err.message);
+
         if (err.response?.status === 401) {
           setError("Please log in to view your orders");
         } else {
           setError(err.response?.data?.message || "Failed to load orders");
         }
+
         setOrders([]);
       } finally {
         setLoading(false);
       }
     };
+
     fetchOrders();
   }, []);
+
 
   const handleCancelOrder = async (order) => {
     if (
@@ -116,17 +119,15 @@ function Orders() {
         order_id: order._id,
         order_number: order._id.slice(-6).toUpperCase(),
         total: `${order.totalAmount?.toFixed(3) || 0} kw`,
-        customer_name: order.userInfo?.name || "Unknown Customer",
-        customer_phone: order.userInfo?.phone || "No phone",
+        customer_name: order.user?.name || order.guestInfo?.name || "N/A",
+        customer_phone: order.user?.phone || order.guestInfo?.phone || "N/A",
         items_count: order.products?.length || 0,
         order_type: order.orderType === "pickup" ? "Pickup" : "Delivery",
-        address: `${order.shippingAddress?.city || ""}, ${
-          order.shippingAddress?.area || ""
-        }`,
+        address: `${order.shippingAddress?.city || ""}, ${order.shippingAddress?.area || ""
+          }`,
         schedule: order.scheduleTime
-          ? `${new Date(order.scheduleTime.date).toLocaleDateString()} - ${
-              order.scheduleTime.timeSlot
-            }`
+          ? `${new Date(order.scheduleTime.date).toLocaleDateString()} - ${order.scheduleTime.timeSlot
+          }`
           : "ASAP",
         items_list: itemsList,
         cancellation_reason: "Customer deleted order via mobile app",
@@ -143,12 +144,10 @@ function Orders() {
 
       alert(
         language === "ar"
-          ? `✅ تم حذف الطلب نهائياً${
-              promoCode ? ` واستعادة كود ${promoCode}` : ""
-            }!`
-          : `✅ Order deleted &${
-              promoCode ? ` promo ${promoCode} restored` : " store notified"
-            }!`
+          ? `✅ تم حذف الطلب نهائياً${promoCode ? ` واستعادة كود ${promoCode}` : ""
+          }!`
+          : `✅ Order deleted &${promoCode ? ` promo ${promoCode} restored` : " store notified"
+          }!`
       );
     } catch (err) {
       console.error("❌ Delete failed:", err.response?.data || err.message);
@@ -259,7 +258,7 @@ function Orders() {
               Retry
             </button>
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/register")}
               className="px-4 py-1 border border-red-500 text-red-500 text-sm rounded-lg hover:bg-red-50"
             >
               Go to Login
@@ -308,12 +307,12 @@ function Orders() {
                     ? order.status === "completed"
                       ? "مكتمل"
                       : order.status === "pending"
-                      ? "قيد الانتظار"
-                      : order.status === "cancelled"
-                      ? "ملغي"
-                      : "مؤكد"
+                        ? "قيد الانتظار"
+                        : order.status === "cancelled"
+                          ? "ملغي"
+                          : "مؤكد"
                     : order.status.charAt(0).toUpperCase() +
-                      order.status.slice(1)}
+                    order.status.slice(1)}
                 </span>
               </div>
             </div>
@@ -349,8 +348,8 @@ function Orders() {
                       ? "التوصيل إلى"
                       : "Delivery to"
                     : language === "ar"
-                    ? "الاستلام من"
-                    : "Pickup from"}
+                      ? "الاستلام من"
+                      : "Pickup from"}
                 </span>
                 <span className="font-medium text-gray-900">
                   {order.shippingAddress?.city}, {order.shippingAddress?.area}

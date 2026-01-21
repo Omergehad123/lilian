@@ -235,7 +235,6 @@ export function OrderProvider({ children }) {
     } catch (error) {
       console.error("❌ DB Save failed:", error);
 
-      // DO NOT proceed with fake orderId
       return { success: false, message: error.message };
     } finally {
       setSavingOrder(false);

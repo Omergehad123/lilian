@@ -128,9 +128,8 @@ function Signup() {
             placeholder={t.firstNamePlaceholder}
             value={form.firstName}
             onChange={handleInputChange}
-            className={`border-b py-3 bg-transparent focus:outline-none ${
-              inputError.firstName ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`border-b py-3 bg-transparent focus:outline-none ${inputError.firstName ? "border-red-500" : "border-gray-300"
+              }`}
             autoComplete="given-name"
           />
 
@@ -140,9 +139,8 @@ function Signup() {
             placeholder={t.lastNamePlaceholder}
             value={form.lastName}
             onChange={handleInputChange}
-            className={`border-b py-3 bg-transparent focus:outline-none ${
-              inputError.lastName ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`border-b py-3 bg-transparent focus:outline-none ${inputError.lastName ? "border-red-500" : "border-gray-300"
+              }`}
             autoComplete="family-name"
           />
 
@@ -152,9 +150,8 @@ function Signup() {
             placeholder={t.emailPlaceholder}
             value={form.email}
             onChange={handleInputChange}
-            className={`border-b py-3 bg-transparent focus:outline-none ${
-              inputError.email ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`border-b py-3 bg-transparent focus:outline-none ${inputError.email ? "border-red-500" : "border-gray-300"
+              }`}
             autoComplete="email"
           />
 
@@ -164,9 +161,8 @@ function Signup() {
             placeholder={t.passwordPlaceholder}
             value={form.password}
             onChange={handleInputChange}
-            className={`border-b py-3 bg-transparent focus:outline-none ${
-              inputError.password ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`border-b py-3 bg-transparent focus:outline-none ${inputError.password ? "border-red-500" : "border-gray-300"
+              }`}
             autoComplete="new-password"
           />
         </div>
@@ -177,13 +173,12 @@ function Signup() {
 
         <button
           type="submit"
-          className={`absolute w-[95%] left-1/2 -translate-x-1/2 -bottom-10 py-3 rounded-md transition capitalize font-medium ${
-            submitting || authLoading
-              ? "bg-gray-300 cursor-not-allowed"
-              : isGuest
+          className={`absolute w-[95%] left-1/2 -translate-x-1/2 -bottom-10 py-3 rounded-md transition capitalize font-medium ${submitting || authLoading
+            ? "bg-gray-300 cursor-not-allowed"
+            : isGuest
               ? "bg-green-500 hover:bg-green-600 text-white"
               : "bg-gray-300 hover:bg-gray-400"
-          }`}
+            }`}
           disabled={submitting || authLoading}
         >
           {getButtonText()}
@@ -198,11 +193,10 @@ function Signup() {
           type="button"
           onClick={handleGuestLogin}
           disabled={guestLoading || isGuest}
-          className={`w-full py-3 px-6 rounded-md capitalize transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2 ${
-            guestLoading || isGuest
-              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-blue-50 border-2 border-blue-200 hover:bg-blue-100 hover:border-blue-300 text-blue-700"
-          }`}
+          className={`w-full py-3 px-6 rounded-md capitalize transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2 ${guestLoading || isGuest
+            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+            : "bg-blue-50 border-2 border-blue-200 hover:bg-blue-100 hover:border-blue-300 text-blue-700"
+            }`}
         >
           {guestLoading ? (
             <>
@@ -225,7 +219,7 @@ function Signup() {
       {/* ✅ Back to Login Link */}
       <div className="mx-5 mt-6 text-center">
         <Link
-          to="/login"
+          to="/register"
           className="text-[#0066cc] underline text-sm hover:text-[#0052a3] inline-flex items-center gap-1"
         >
           ← {t.backToLogin || "Back to Login"}

@@ -1,3 +1,4 @@
+import axios from "axios";
 import { createContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -6,62 +7,56 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
 
+  // check if user exists in localStorage (NOT token)
   const checkAuthStatus = async () => {
     try {
-      // 🔥 1. Check localStorage FIRST
       const storedUser = localStorage.getItem("user");
-      const storedToken = localStorage.getItem("token");
+      const storedIsGuest = localStorage.getItem("isGuest");
 
-      if (storedUser && storedToken) {
+      if (storedUser) {
         const user = JSON.parse(storedUser);
+
         setUser(user);
-        setToken(storedToken);
-        setIsGuest(user.isGuest || false);
-        setLoading(false);
-        return; // ✅ EXIT EARLY - NO API CALL
+        setIsGuest(storedIsGuest === "true");
       }
     } catch (e) {
       console.log("Stored data corrupted");
     }
 
-    // 🔥 2. ONLY check backend if NO local data
-    setLoading(false); // Skip backend call entirely
+    setLoading(false);
   };
 
   useEffect(() => {
     checkAuthStatus();
   }, []);
 
-  // Sync user/token to localStorage
   useEffect(() => {
     if (user) localStorage.setItem("user", JSON.stringify(user));
     else localStorage.removeItem("user");
   }, [user]);
 
   useEffect(() => {
-    if (token) localStorage.setItem("token", token);
-    else localStorage.removeItem("token");
-  }, [token]);
+    localStorage.setItem("isGuest", isGuest ? "true" : "false");
+  }, [isGuest]);
 
-  // ✅ NEW: Guest Login Function
+  /**
+   * Guest Login
+   * (Cookie based token is set by backend)
+   */
   const loginAsGuest = async () => {
     try {
-      const response = await fetch(
+      const response = await axios.post(
         "https://lilian-backend.onrender.com/api/users/guest-login",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        }
+        {},
+        { withCredentials: true }
       );
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok || data.status !== "success") {
+      if (data.status !== "success") {
         return {
           success: false,
           error: data.message || data.error || "Guest login failed",
@@ -69,15 +64,14 @@ export const AuthProvider = ({ children }) => {
       }
 
       const guestUser = data.data?.user;
-      const authToken = guestUser?.token;
 
-      if (guestUser && authToken) {
+      if (guestUser) {
         setUser(guestUser);
-        setToken(authToken);
         setIsGuest(true);
+
         localStorage.setItem("user", JSON.stringify(guestUser));
-        localStorage.setItem("token", authToken);
         localStorage.setItem("isGuest", "true");
+
         navigate("/");
         return { success: true, isGuest: true };
       }
@@ -89,49 +83,46 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+
+  /**
+   * Normal Login
+   */
   const login = async (email, password) => {
     try {
-      const response = await fetch(
+      const response = await axios.post(
         "https://lilian-backend.onrender.com/api/users/login",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
+        { email, password },
+        { withCredentials: true }
       );
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok || data.status !== "success") {
+      if (data.status !== "success") {
         return {
           success: false,
-          error: data.message || data.error || "Invalid credentials",
+          error: data.message || "Invalid credentials",
         };
       }
 
-      const loggedUser = data.data?.user;
-      const authToken = loggedUser?.token;
+      const loggedUser = data.data.user;
 
-      if (loggedUser && authToken) {
-        setUser(loggedUser);
-        setToken(authToken);
-        setIsGuest(false); // ✅ Reset guest status
-        localStorage.setItem("user", JSON.stringify(loggedUser));
-        localStorage.setItem("token", authToken);
-        localStorage.setItem("isGuest", "false");
-        localStorage.removeItem("guestId"); // Clean up guest data
-        navigate("/");
-        return { success: true, isGuest: false };
-      }
+      setUser(loggedUser);
+      setIsGuest(false);
+      localStorage.setItem("user", JSON.stringify(loggedUser));
+      localStorage.setItem("isGuest", "false");
 
-      return { success: false, error: "Invalid response format" };
+      navigate("/");
+      return { success: true };
     } catch (err) {
       console.error("Login error:", err);
       return { success: false, error: "Network error" };
     }
   };
 
+
+  /**
+   * Logout
+   */
   const logout = async () => {
     try {
       await fetch("https://lilian-backend.onrender.com/api/users/logout", {
@@ -142,17 +133,18 @@ export const AuthProvider = ({ children }) => {
       console.log("Logout cleanup");
     } finally {
       setUser(null);
-      setToken(null);
       setIsGuest(false);
+
       localStorage.removeItem("user");
-      localStorage.removeItem("token");
       localStorage.removeItem("isGuest");
-      localStorage.removeItem("guestId");
+
       navigate("/");
     }
   };
 
-  // Register function - unchanged
+  /**
+   * Register
+   */
   const register = async (formData) => {
     try {
       const response = await fetch(
@@ -175,16 +167,15 @@ export const AuthProvider = ({ children }) => {
       }
 
       const newUser = data.data?.user;
-      const authToken = newUser?.token;
 
-      if (newUser && authToken) {
+      if (newUser) {
         setUser(newUser);
-        setToken(authToken);
         setIsGuest(false);
+
         localStorage.setItem("user", JSON.stringify(newUser));
-        localStorage.setItem("token", authToken);
         localStorage.setItem("isGuest", "false");
-        return { success: true, user: newUser, token: authToken };
+
+        return { success: true, user: newUser };
       }
 
       return { success: true };
@@ -194,19 +185,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ NEW: Upgrade guest to registered user
+  /**
+   * Upgrade Guest -> Registered
+   */
   const upgradeGuest = async (formData) => {
     try {
-      // First get current guest cart
-      const token = localStorage.getItem("token");
-      const userResponse = await fetch(
-        "https://lilian-backend.onrender.com/api/users/me",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const currentUser = await userResponse.json();
-
       const response = await fetch(
         "https://lilian-backend.onrender.com/api/users/register",
         {
@@ -215,8 +198,7 @@ export const AuthProvider = ({ children }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...formData,
-            mergeCart: true, // Optional: tell backend to merge carts
-            guestId: user.guestId,
+            mergeCart: true,
           }),
         }
       );
@@ -231,15 +213,14 @@ export const AuthProvider = ({ children }) => {
       }
 
       const newUser = data.data?.user;
-      const authToken = newUser?.token;
 
-      if (newUser && authToken) {
+      if (newUser) {
         setUser(newUser);
-        setToken(authToken);
         setIsGuest(false);
+
         localStorage.setItem("user", JSON.stringify(newUser));
-        localStorage.setItem("token", authToken);
         localStorage.setItem("isGuest", "false");
+
         return { success: true };
       }
 
@@ -252,14 +233,13 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    token,
     isGuest,
     login,
-    loginAsGuest, // ✅ New function
+    loginAsGuest,
     logout,
     loading,
     register,
-    upgradeGuest, // ✅ New function
+    upgradeGuest,
   };
 
   if (loading) {

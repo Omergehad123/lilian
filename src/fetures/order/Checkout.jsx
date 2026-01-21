@@ -1,5 +1,4 @@
-// ✅ Checkout.jsx - COUNTRIES WITH THEIR GLOBAL CODES ONLY
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FaArrowLeft, FaTag } from "react-icons/fa";
 import { useOrder } from "../../hooks/useOrder";
 import { useCart } from "../../hooks/useCart";
@@ -34,7 +33,7 @@ const Checkout = () => {
 
   const orderType = order?.orderType || "delivery";
 
-  // 🔥 CART PROMO DATA - READ FROM localStorage
+  // CART PROMO DATA - READ FROM localStorage
   const [cartPromoData, setCartPromoData] = useState({
     promoCode: null,
     promoDiscount: 0,
@@ -62,12 +61,12 @@ const Checkout = () => {
   const [house, setHouse] = useState(order.shippingAddress?.house || "");
   const [name, setName] = useState(order.customerName || "");
 
-  // 🔥 PHONE STATE - SAVED IN LOCAL STATE (PERSISTENT)
+  // PHONE STATE
   const [phoneCountryCode, setPhoneCountryCode] = useState("+965");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [savedPhoneData, setSavedPhoneData] = useState(null);
 
-  // 🔥 COUNTRIES SHOWING GLOBAL CODES ONLY (+20, +965, etc.)
+  // COUNTRIES SHOWING GLOBAL CODES ONLY
   const countryCodes = [
     { code: "+965", digits: 8 },
     { code: "+20", digits: 11 },
@@ -85,9 +84,8 @@ const Checkout = () => {
     return isNaN(num) ? 0 : num;
   };
 
-  // 🔥 LOAD SAVED PHONE DATA ON MOUNT (PRESERVE USER INPUT)
+  // LOAD SAVED PHONE DATA ON MOUNT
   useEffect(() => {
-    // Check localStorage for saved phone data first
     try {
       const savedPhone = localStorage.getItem("checkoutPhoneData");
       if (savedPhone) {
@@ -101,7 +99,6 @@ const Checkout = () => {
       console.error("Error loading saved phone data:", error);
     }
 
-    // Fallback: Parse from order if no saved data
     if (order.customerPhone && !savedPhoneData) {
       const fullPhone = order.customerPhone.replace(/[^\d+]/g, "");
       const matchedCountry = countryCodes.find((country) =>
@@ -120,9 +117,9 @@ const Checkout = () => {
         });
       }
     }
-  }, []); // Only run once on mount
+  }, []); // only once
 
-  // 🔥 SAVE PHONE DATA TO LOCALSTORAGE ON CHANGE
+  // SAVE PHONE DATA TO LOCALSTORAGE
   useEffect(() => {
     if (phoneNumber || phoneCountryCode !== "+965") {
       const phoneData = {
@@ -135,7 +132,7 @@ const Checkout = () => {
     }
   }, [phoneCountryCode, phoneNumber]);
 
-  // 🔥 IMPROVED CALCULATIONS
+  // CALCULATIONS
   const cartSubtotal =
     toNumber(subtotal) ||
     cart.reduce(
@@ -186,6 +183,16 @@ const Checkout = () => {
     return slot.date.split("-").reverse().join("/") + ` | ${slot.timeSlot}`;
   };
 
+  // 🚀 NEW: navigate only after state updates
+  const [readyToReview, setReadyToReview] = useState(false);
+
+  useEffect(() => {
+    if (readyToReview) {
+      navigate("/reviewOrder");
+      setReadyToReview(false);
+    }
+  }, [readyToReview, navigate]);
+
   const handleSaveAndNavigateToReview = useCallback(() => {
     if (orderType === "pickup") {
       setShippingAddress({});
@@ -197,13 +204,14 @@ const Checkout = () => {
       });
     }
 
-    // 🔥 PERFECT PHONE CONSTRUCTION
     const cleanPhoneNumber = phoneNumber.replace(/\D/g, "");
     const fullPhoneNumber = phoneCountryCode + cleanPhoneNumber;
 
     setCustomerName(name);
     setCustomerPhone(fullPhoneNumber);
-    navigate("/reviewOrder");
+
+    // IMPORTANT
+    setReadyToReview(true);
   }, [
     orderType,
     street,
@@ -215,7 +223,6 @@ const Checkout = () => {
     setShippingAddress,
     setCustomerName,
     setCustomerPhone,
-    navigate,
   ]);
 
   const handleBlockChange = (e) => {
@@ -261,26 +268,24 @@ const Checkout = () => {
       </div>
 
       <div className="p-6 lg:w-[60%] w-[95%] mx-auto mt-6 rounded-2xl bg-white shadow-xl">
-        {/* Order Type Selection */}
+        {/* Order Type */}
         <div className="flex items-center justify-center gap-8 my-6 pb-6 border-b">
           <button
             onClick={handleSelectType}
-            className={`px-8 py-3 text-sm font-medium transition-all duration-200 rounded-xl ${
-              orderType === "delivery"
-                ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-300 shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
-            }`}
+            className={`px-8 py-3 text-sm font-medium transition-all duration-200 rounded-xl ${orderType === "delivery"
+              ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-300 shadow-md"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+              }`}
           >
             <FaMotorcycle className="inline mr-2" />
             {language === "ar" ? "توصيل" : "Delivery"}
           </button>
           <button
             onClick={handleSelectType}
-            className={`px-8 py-3 text-sm font-medium transition-all duration-200 rounded-xl ${
-              orderType === "pickup"
-                ? "bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
-            }`}
+            className={`px-8 py-3 text-sm font-medium transition-all duration-200 rounded-xl ${orderType === "pickup"
+              ? "bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-md"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+              }`}
           >
             🏪 {language === "ar" ? "استلام" : "Pickup"}
           </button>
@@ -342,9 +347,7 @@ const Checkout = () => {
               </label>
               <input
                 className={inputBase}
-                placeholder={
-                  language === "ar" ? "أدخل اسمك" : "Enter your name"
-                }
+                placeholder={language === "ar" ? "أدخل اسمك" : "Enter your name"}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -369,9 +372,7 @@ const Checkout = () => {
                 <input
                   className={`${inputBase} flex-1`}
                   type="tel"
-                  placeholder={
-                    language === "ar" ? "رقم الهاتف" : "Phone number"
-                  }
+                  placeholder={language === "ar" ? "رقم الهاتف" : "Phone number"}
                   value={phoneNumber}
                   onChange={handlePhoneChange}
                   maxLength={selectedCountry?.digits || 11}
@@ -380,12 +381,10 @@ const Checkout = () => {
               {!isPhoneValid && phoneNumber && (
                 <p className="text-red-500 text-xs mt-1">
                   {language === "ar"
-                    ? `يجب أن يكون ${
-                        selectedCountry?.digits || 11
-                      } رقم على الأقل`
-                    : `Phone must be ${
-                        selectedCountry?.digits || 11
-                      } digits minimum`}
+                    ? `يجب أن يكون ${selectedCountry?.digits || 11
+                    } رقم على الأقل`
+                    : `Phone must be ${selectedCountry?.digits || 11
+                    } digits minimum`}
                 </p>
               )}
             </div>
@@ -434,7 +433,7 @@ const Checkout = () => {
           )}
         </div>
 
-        {/* 🔥 FIXED TOTALS SECTION */}
+        {/* Totals */}
         <div className="space-y-4 mb-8 p-6 bg-gray-50 rounded-2xl">
           <div className="flex justify-between text-lg font-semibold text-gray-700">
             <span>{language === "ar" ? "المجموع الفرعي" : "Subtotal"}</span>
@@ -473,11 +472,10 @@ const Checkout = () => {
         </div>
 
         <button
-          className={`${buttonBase} ${
-            isFormValid
-              ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 transition-all duration-200"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-          }`}
+          className={`${buttonBase} ${isFormValid
+            ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 transition-all duration-200"
+            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           onClick={handleSaveAndNavigateToReview}
           disabled={!isFormValid}
         >

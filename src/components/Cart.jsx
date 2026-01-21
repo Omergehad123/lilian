@@ -6,6 +6,7 @@ import { CiCircleRemove } from "react-icons/ci";
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../hooks/useLanguage";
 import { useCart } from "../hooks/useCart";
+import { useOrder } from "../hooks/useOrder"; // <-- ADD THIS
 
 function Cart() {
   const navigate = useNavigate();
@@ -14,7 +15,8 @@ function Cart() {
   const { cart, removeFromCart, increaseItemQty, decreaseItemQty, cartTotal } =
     useCart();
 
-  // ✅ Promo Code State - FULLY FUNCTIONAL
+  const { setItems } = useOrder(); // <-- ADD THIS
+
   const [promoCode, setPromoCode] = useState("");
   const [promoValid, setPromoValid] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -23,7 +25,6 @@ function Cart() {
 
   const dir = language === "ar" ? "rtl" : "ltr";
 
-  // ✅ FIXED Promo Validation Logic
   const validatePromo = async () => {
     if (!promoCode.trim()) {
       setPromoValid(false);
@@ -59,7 +60,7 @@ function Cart() {
         setPromoDiscount(0);
         setPromoError(
           data.message ||
-            (language === "ar" ? "كود الخصم غير صحيح" : "Invalid promo code")
+          (language === "ar" ? "كود الخصم غير صحيح" : "Invalid promo code")
         );
       }
     } catch (error) {
@@ -70,7 +71,6 @@ function Cart() {
     }
   };
 
-  // ✅ Persist promo code
   useEffect(() => {
     const savedPromo = localStorage.getItem("promoCode");
     if (savedPromo) {
@@ -88,10 +88,12 @@ function Cart() {
 
   const handleCheckout = () => {
     if (!user) {
-      // ✅ Store cart URL before redirect
       sessionStorage.setItem("authReturnUrl", window.location.pathname);
-      return navigate("/register"); // or "/login"
+      return navigate("/register");
     }
+
+    // 🔥 IMPORTANT FIX: Sync cart items to order
+    setItems(cart);
 
     const checkoutData = {
       promoCode: promoValid ? promoCode : null,
@@ -114,7 +116,6 @@ function Cart() {
     );
   };
 
-  // ✅ Discount calculations
   const discountedTotal = cartTotal * (1 - promoDiscount / 100);
   const discountAmount = cartTotal * (promoDiscount / 100);
 
@@ -125,7 +126,6 @@ function Cart() {
 
   return (
     <div className="bg-[#eee] relative" dir={dir}>
-      {/* Header */}
       <div className="bg-white flex items-center justify-between px-5 py-3 border-b border-b-[#d2d2d2]">
         <button onClick={handleBack} className="cursor-pointer">
           <FaArrowLeft className="text-lg text-[#666D7D]" />
@@ -145,7 +145,6 @@ function Cart() {
       </div>
 
       <div>
-        {/* ✅ Promotions - YOUR ORIGINAL DESIGN + FULL FUNCTIONALITY */}
         <div className="flex flex-col gap-1 pb-5 pt-10">
           <h1 className="text-gray-600 capitalize px-3 font-semibold">
             {language === "ar" ? "العروض" : "Promotions"}
@@ -166,20 +165,17 @@ function Cart() {
               <button
                 onClick={validatePromo}
                 disabled={promoLoading}
-                className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-all ${
-                  promoLoading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-all ${promoLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
               >
                 {getPromoButtonText()}
               </button>
             </div>
 
-            {/* ✅ Error Message */}
             {promoError && (
               <p className="text-red-500 text-sm px-1">{promoError}</p>
             )}
 
-            {/* ✅ Success Message */}
             {promoValid && (
               <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-md flex items-center justify-between">
                 <span className="text-green-700 font-medium">
@@ -201,7 +197,6 @@ function Cart() {
           </div>
         </div>
 
-        {/* ✅ Cart Items - YOUR ORIGINAL DESIGN */}
         <div className="flex flex-col gap-1 py-5 min-h-[70vh]">
           <h1 className="text-gray-600 capitalize px-3 font-semibold">
             {language === "ar" ? "المنتجات" : "Items"}
@@ -290,7 +285,6 @@ function Cart() {
                   );
                 })}
 
-                {/* ✅ Checkout Bar - YOUR ORIGINAL DESIGN + DISCOUNT SUPPORT */}
                 <div className="rounded-md flex flex-col gap-2 px-5 py-4 bg-[#d3e2e7] shadow-lg mt-5">
                   <div className="flex items-center justify-between">
                     <span className="rounded-md w-10 h-10 bg-gray-400 flex items-center justify-center font-bold">
@@ -301,7 +295,6 @@ function Cart() {
                     </span>
                   </div>
 
-                  {/* ✅ Discount Display */}
                   {promoValid && (
                     <div className="flex justify-between items-center bg-green-50 p-2 rounded-md border border-green-200">
                       <span className="text-sm text-green-700 font-medium">
