@@ -58,6 +58,20 @@ function PaymentSuccess() {
 
     setPdfGenerating(true);
 
+    // ✅ Force PDF-safe colors (kills oklch / gradients)
+    const pdfSafeStyles = document.createElement("style");
+    pdfSafeStyles.innerHTML = `
+      * {
+        color: #000 !important;
+        background-color: #fff !important;
+        border-color: #000 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        background-image: none !important;
+      }
+    `;
+    document.head.appendChild(pdfSafeStyles);
+
     try {
       const canvas = await html2canvas(pdfContentRef.current, {
         scale: 2,
@@ -66,8 +80,8 @@ function PaymentSuccess() {
       });
 
       const imgData = canvas.toDataURL("image/png");
-
       const pdf = new jsPDF("p", "mm", "a4");
+
       const pdfWidth = 210;
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
@@ -77,9 +91,11 @@ function PaymentSuccess() {
       console.error("PDF Error:", err);
       alert("PDF generation failed");
     } finally {
+      document.head.removeChild(pdfSafeStyles);
       setPdfGenerating(false);
     }
   }, [order]);
+
 
 
   // Fix duplicate // in URL

@@ -30,7 +30,6 @@ function PaymentFailed() {
     }
   }, []);
 
-  // Read query params once
   useEffect(() => {
     if (error) {
       const messages = {
@@ -60,7 +59,22 @@ function PaymentFailed() {
       alert("PDF content not ready");
       return;
     }
+
     setPdfGenerating(true);
+
+    // ✅ Inject PDF-safe styles (NO oklch, NO gradients)
+    const pdfSafeStyles = document.createElement("style");
+    pdfSafeStyles.innerHTML = `
+      * {
+        color: #000 !important;
+        background-color: #fff !important;
+        border-color: #000 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+    `;
+    document.head.appendChild(pdfSafeStyles);
+
     try {
       const canvas = await html2canvas(pdfContentRef.current, {
         scale: 2,
@@ -70,19 +84,21 @@ function PaymentFailed() {
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
+
       const pdfWidth = 210;
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(
-        `failed-payment${
-          orderId ? `-${orderId.slice(-6).toUpperCase()}` : ""
+        `failed-payment${orderId ? `-${orderId.slice(-6).toUpperCase()}` : ""
         }.pdf`
       );
     } catch (err) {
       console.error("PDF Error:", err);
       alert("PDF generation failed");
     } finally {
+      // ✅ Clean up styles
+      document.head.removeChild(pdfSafeStyles);
       setPdfGenerating(false);
     }
   }, [orderId]);
